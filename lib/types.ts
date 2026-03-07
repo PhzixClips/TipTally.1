@@ -6,6 +6,7 @@ export interface Shift {
   totalEarned: number;    // What user enters (wage + tips combined)
   tips: number;           // Calculated: totalEarned - (hours * hourlyWage)
   hourlyWage: number;     // Snapshot of wage at time of logging
+  shiftTime?: string;     // "4:30 PM" - optional start time for display
   createdAt: string;
   updatedAt: string;
 }
@@ -52,3 +53,4 @@ export interface AppData {
   version: number;
   updatedAt: string;
 }
+
