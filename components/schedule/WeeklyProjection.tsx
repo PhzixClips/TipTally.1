@@ -1,20 +1,22 @@
-import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import ProgressBar from '../ui/ProgressBar';
 import { C } from '../../lib/constants';
-import { ScheduledShift } from '../../lib/types';
-import { getWeekStart, formatWeekLabel } from '../../lib/helpers';
+import { ScheduledShift, Shift } from '../../lib/types';
+import { getWeekStart, formatWeekLabel, getDayAverage } from '../../lib/helpers';
 
 interface Props {
-  upcoming: ScheduledShift[];
-  avgEarned: number;
+  schedule: ScheduledShift[];
+  allShifts: Shift[];
 }
 
-export default function WeeklyProjection({ upcoming, avgEarned }: Props) {
-  if (upcoming.length === 0) return null;
+export default function WeeklyProjection({ schedule, allShifts }: Props) {
+  const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
+
+  if (schedule.length === 0) return null;
 
   const weekMap = new Map<string, ScheduledShift[]>();
-  upcoming.forEach(s => {
+  schedule.forEach(s => {
     const ws = getWeekStart(s.date);
     const existing = weekMap.get(ws) || [];
     existing.push(s);
@@ -24,28 +26,53 @@ export default function WeeklyProjection({ upcoming, avgEarned }: Props) {
   const weeks = Array.from(weekMap.entries())
     .sort(([a], [b]) => a.localeCompare(b));
 
-  const maxShiftsPerWeek = 4;
+  const maxProj = Math.max(...weeks.map(([, shifts]) =>
+    shifts.reduce((sum, s) => sum + getDayAverage(allShifts, s.dayOfWeek), 0)
+  ));
+
   const weekColors = [C.purple, C.blue, C.mint, C.gold, C.peach];
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        WEEKLY PROJECTION  |  avg ${Math.round(avgEarned)}/shift
-      </Text>
+      <Text style={styles.title}>Weekly Projection · day-of-week avg</Text>
       {weeks.map(([weekStart, shifts], i) => {
-        const proj = shifts.length * avgEarned;
-        const pct = Math.min(100, (shifts.length / maxShiftsPerWeek) * 100);
+        const logged = shifts.filter(s => s.logged);
+        const unlogged = shifts.filter(s => !s.logged);
+
+        const earnedAmount = logged.reduce((sum, s) => {
+          if (s.loggedShiftId) {
+            const actual = allShifts.find(sh => sh.id === s.loggedShiftId);
+            if (actual) return sum + actual.totalEarned;
+          }
+          return sum + getDayAverage(allShifts, s.dayOfWeek);
+        }, 0);
+
+        const projectedAmount = unlogged.reduce((sum, s) =>
+          sum + getDayAverage(allShifts, s.dayOfWeek), 0
+        );
+
+        const totalProj = earnedAmount + projectedAmount;
+        const pct = maxProj > 0 ? Math.min(100, (totalProj / maxProj) * 100) : 0;
         const color = weekColors[i % weekColors.length];
+        const isExpanded = expandedWeek === weekStart;
+
         return (
-          <View key={weekStart} style={styles.week}>
+          <TouchableOpacity
+            key={weekStart}
+            onPress={() => setExpandedWeek(isExpanded ? null : weekStart)}
+            activeOpacity={0.7}
+            style={styles.week}
+          >
             <View style={styles.weekHeader}>
-              <Text style={styles.weekLabel}>{formatWeekLabel(weekStart)}</Text>
+              <Text style={styles.weekLabel}>
+                {isExpanded ? '▼' : '►'} {formatWeekLabel(weekStart)}
+              </Text>
               <Text style={[styles.weekValue, { color }]}>
-                ${Math.round(proj)}  |  {shifts.length} shifts
+                ${Math.round(totalProj)} proj · {shifts.length} shifts
               </Text>
             </View>
             <ProgressBar percent={pct} color={color} />
-          </View>
+          </TouchableOpacity>
         );
       })}
     </View>

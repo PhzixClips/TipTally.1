@@ -7,9 +7,10 @@ interface Props {
   shift: Shift;
   onEdit: () => void;
   onDelete: () => void;
+  startTime?: string;
 }
 
-export default function ShiftCard({ shift, onEdit, onDelete }: Props) {
+export default function ShiftCard({ shift, onEdit, onDelete, startTime }: Props) {
   const total = shift.totalEarned;
   const hourly = total / shift.hours;
 
@@ -30,18 +31,21 @@ export default function ShiftCard({ shift, onEdit, onDelete }: Props) {
         <View style={{ flex: 1 }}>
           <Text style={styles.date}>{shift.displayDate}</Text>
           <Text style={styles.detail}>
-            {shift.hours}hrs  |  ${shift.hourlyWage}/hr wage  |  ${hourly.toFixed(2)}/hr eff.
+            {shift.hours}hrs · ${shift.hourlyWage}/hr · ${hourly.toFixed(2)}/hr eff.
           </Text>
           <Text style={styles.tips}>tips: ${shift.tips.toFixed(2)}</Text>
+          {startTime && (
+            <Text style={styles.shiftTime}>shift: {startTime}</Text>
+          )}
         </View>
         <View style={styles.right}>
           <Text style={styles.total}>${Math.round(total)}</Text>
           <View style={styles.actions}>
             <TouchableOpacity onPress={onEdit} style={styles.editBtn}>
-              <Text style={styles.editText}>EDIT</Text>
+              <Text style={styles.editText}>Edit</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={confirmDelete} style={styles.delBtn}>
-              <Text style={styles.delText}>X</Text>
+              <Text style={styles.delText}>×</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -68,8 +72,8 @@ const styles = StyleSheet.create({
   },
   date: {
     color: C.text,
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: '700',
+    fontSize: 15,
   },
   detail: {
     color: C.textMuted,
@@ -84,12 +88,19 @@ const styles = StyleSheet.create({
     fontFamily: mono,
     fontWeight: '600',
   },
+  shiftTime: {
+    color: C.green,
+    fontSize: 10,
+    marginTop: 2,
+    fontFamily: mono,
+    fontWeight: '600',
+  },
   right: {
     alignItems: 'flex-end',
   },
   total: {
     color: C.purple,
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
     fontFamily: mono,
   },
@@ -107,9 +118,8 @@ const styles = StyleSheet.create({
   },
   editText: {
     color: C.textMuted,
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: mono,
-    letterSpacing: 1,
     fontWeight: '600',
   },
   delBtn: {
@@ -122,7 +132,7 @@ const styles = StyleSheet.create({
   },
   delText: {
     color: C.danger,
-    fontSize: 11,
+    fontSize: 14,
     fontFamily: mono,
     fontWeight: '700',
   },

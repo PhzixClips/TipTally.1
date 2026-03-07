@@ -27,19 +27,11 @@ export default function TabLayout() {
           fontSize: 16,
           letterSpacing: 2,
         },
+        headerShown: false,
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'chart.bar.fill', android: 'bar_chart', web: 'bar_chart' }} tintColor={color} size={24} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="shifts"
         options={{
           title: 'Shifts',
           tabBarIcon: ({ color }) => (
@@ -56,15 +48,9 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'gearshape.fill', android: 'settings', web: 'settings' }} tintColor={color} size={24} />
-          ),
-        }}
-      />
+      {/* Hide other tabs from the tab bar */}
+      <Tabs.Screen name="shifts" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }
