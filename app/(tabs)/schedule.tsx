@@ -4,15 +4,17 @@ import { useRouter } from 'expo-router';
 import { useData } from '../../context/DataContext';
 import { C } from '../../lib/constants';
 import StatCard from '../../components/ui/StatCard';
+import ProgressBar from '../../components/ui/ProgressBar';
 import ShiftForm from '../../components/shifts/ShiftForm';
+import Button from '../../components/ui/Button';
 import {
   getDayOfWeek, getDayAverage, getWeekStart, formatWeekLabel,
-  getMonthWeeks, getCurrentMonthRange, isToday,
+  getMonthWeeks, getCurrentMonthRange, isToday, formatDisplayDate,
 } from '../../lib/helpers';
 import { ScheduledShift } from '../../lib/types';
 
 export default function ScheduleScreen() {
-  const { data, logScheduledShift, deleteScheduledShift } = useData();
+  const { data, logScheduledShift, deleteScheduledShift, addScheduledShift } = useData();
   const router = useRouter();
   const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
   const [logTarget, setLogTarget] = useState<string | null>(null);
@@ -20,13 +22,16 @@ export default function ScheduleScreen() {
   const allShifts = data.shifts;
   const schedule = data.schedule;
 
+  // Filter upcoming (unlogged) for summary stats
   const upcoming = useMemo(() =>
     schedule.filter(s => !s.logged).sort((a, b) => a.date.localeCompare(b.date)),
     [schedule]
   );
 
+  // Current month range
   const monthRange = useMemo(() => getCurrentMonthRange(), []);
 
+  // All schedule entries for current month (both logged and unlogged)
   const monthSchedule = useMemo(() =>
     schedule
       .filter(s => s.date >= monthRange.start && s.date <= monthRange.end)
@@ -34,26 +39,41 @@ export default function ScheduleScreen() {
     [schedule, monthRange]
   );
 
+  // Weeks of current month
   const monthWeeks = useMemo(() => getMonthWeeks(), []);
 
+  // Group month schedule by week
   const weekGroups = useMemo(() => {
     return monthWeeks.map(ws => {
-      const weekShifts = monthSchedule.filter(s => getWeekStart(s.date) === ws);
+      // Week end is 6 days after week start
+      const wsDate = new Date(ws + 'T12:00:00');
+      const weDate = new Date(wsDate);
+      weDate.setDate(weDate.getDate() + 6);
+      const weISO = `${weDate.getFullYear()}-${String(weDate.getMonth() + 1).padStart(2, '0')}-${String(weDate.getDate()).padStart(2, '0')}`;
 
+      const weekShifts = monthSchedule.filter(s => {
+        const sWeek = getWeekStart(s.date);
+        return sWeek === ws;
+      });
+
+      // Calculate earned (from logged shifts) and projected (from unlogged)
       const logged = weekShifts.filter(s => s.logged);
       const unlogged = weekShifts.filter(s => !s.logged);
 
+      // For logged shifts, find the actual shift earnings
       const earnedAmount = logged.reduce((sum, s) => {
         if (s.loggedShiftId) {
           const actualShift = allShifts.find(sh => sh.id === s.loggedShiftId);
           if (actualShift) return sum + actualShift.totalEarned;
         }
+        // Fallback: use day average
         return sum + getDayAverage(allShifts, s.dayOfWeek);
       }, 0);
 
-      const projectedAmount = unlogged.reduce((sum, s) =>
-        sum + getDayAverage(allShifts, s.dayOfWeek), 0
-      );
+      // For unlogged, project using day-of-week averages
+      const projectedAmount = unlogged.reduce((sum, s) => {
+        return sum + getDayAverage(allShifts, s.dayOfWeek);
+      }, 0);
 
       return {
         weekStart: ws,
@@ -68,20 +88,24 @@ export default function ScheduleScreen() {
     }).filter(w => w.shifts.length > 0);
   }, [monthWeeks, monthSchedule, allShifts]);
 
-  // Summary stats
+  // Summary calculations
   const totalHours = upcoming.reduce((s, sh) => s + sh.estimatedHours, 0);
 
+  // This week projection (day-of-week based)
   const now = new Date();
-  const nowISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const currentWeekStart = getWeekStart(nowISO);
+  const currentWeekStart = getWeekStart(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`);
   const thisWeekShifts = upcoming.filter(s => getWeekStart(s.date) === currentWeekStart);
   const projectedWeek = thisWeekShifts.reduce((sum, s) => sum + getDayAverage(allShifts, s.dayOfWeek), 0);
+
+  // Month projection
   const projectedMonth = upcoming.reduce((sum, s) => sum + getDayAverage(allShifts, s.dayOfWeek), 0);
 
-  const maxWeekAmount = weekGroups.length ? Math.max(...weekGroups.map(w => w.totalAmount), 1) : 1;
+  // Max weekly amount for progress bar scaling
+  const maxWeekAmount = weekGroups.length ? Math.max(...weekGroups.map(w => w.totalAmount)) : 1;
 
   const logTargetEntry = logTarget ? schedule.find(s => s.id === logTarget) : null;
 
+  // Get actual earnings for a logged scheduled shift
   const getLoggedEarnings = (s: ScheduledShift): number | null => {
     if (!s.logged || !s.loggedShiftId) return null;
     const actual = allShifts.find(sh => sh.id === s.loggedShiftId);
@@ -105,7 +129,7 @@ export default function ScheduleScreen() {
         </View>
 
         {/* Summary Cards */}
-        <View style={styles.statsRow}>
+        <View style={styles.statsGrid}>
           <StatCard
             label="Shifts Left"
             value={`${upcoming.length}`}
@@ -119,7 +143,7 @@ export default function ScheduleScreen() {
             accent={C.purple}
           />
         </View>
-        <View style={styles.statsSingle}>
+        <View style={styles.statsGridSingle}>
           <StatCard
             label="Proj. Month"
             value={`$${Math.round(projectedMonth).toLocaleString()}`}
@@ -141,7 +165,7 @@ export default function ScheduleScreen() {
                   <View style={styles.weekRow}>
                     <Text style={styles.weekLabel}>
                       <Text style={{ color: C.textSoft }}>
-                        {expandedWeek === week.weekStart ? '\u25BC' : '\u25BA'}
+                        {expandedWeek === week.weekStart ? '▼' : '►'}
                       </Text>{' '}
                       {week.label}
                     </Text>
@@ -154,15 +178,21 @@ export default function ScheduleScreen() {
                           {week.earnedAmount > 0 ? '  +  ' : ''}${Math.round(week.projectedAmount)} proj
                         </Text>
                       )}
-                      <Text style={styles.weekShiftCount}>
-                        {' '} · {week.shifts.length} shift{week.shifts.length !== 1 ? 's' : ''}
-                      </Text>
+                      <Text style={styles.weekShiftCount}> · {week.shifts.length} shift{week.shifts.length !== 1 ? 's' : ''}</Text>
                     </View>
                   </View>
                   {/* Dual progress bar */}
-                  <View style={styles.dualBarTrack}>
-                    <View style={[styles.dualBarEarned, { width: `${Math.min(100, (week.earnedAmount / maxWeekAmount) * 100)}%` }]} />
-                    <View style={[styles.dualBarProjected, { width: `${Math.min(100, (week.projectedAmount / maxWeekAmount) * 100)}%` }]} />
+                  <View style={styles.dualBar}>
+                    <View style={[styles.dualBarTrack, { backgroundColor: C.purple + '18' }]}>
+                      <View style={[
+                        styles.dualBarEarned,
+                        { width: `${(week.earnedAmount / maxWeekAmount) * 100}%` }
+                      ]} />
+                      <View style={[
+                        styles.dualBarProjected,
+                        { width: `${(week.projectedAmount / maxWeekAmount) * 100}%` }
+                      ]} />
+                    </View>
                   </View>
                 </TouchableOpacity>
 
@@ -221,6 +251,7 @@ export default function ScheduleScreen() {
                         </View>
                       );
                     })}
+                    {/* Week footer */}
                     <View style={styles.weekFooter}>
                       <Text style={styles.weekFooterLeft}>
                         {week.loggedCount} logged · {week.unloggedCount} remaining
@@ -236,7 +267,7 @@ export default function ScheduleScreen() {
           </View>
         )}
 
-        {/* Upcoming shifts quick list */}
+        {/* Upcoming individual cards (unlogged, for quick access) */}
         {upcoming.slice(0, 5).map(s => {
           const dayNum = s.date.split('-')[2];
           const today = isToday(s.date);
@@ -274,6 +305,7 @@ export default function ScheduleScreen() {
         )}
       </ScrollView>
 
+      {/* Log shift modal */}
       {logTargetEntry && (
         <ShiftForm
           visible={true}
@@ -341,12 +373,12 @@ const styles = StyleSheet.create({
     fontFamily: mono,
     fontWeight: '700',
   },
-  statsRow: {
+  statsGrid: {
     flexDirection: 'row',
     gap: 10,
     marginBottom: 10,
   },
-  statsSingle: {
+  statsGridSingle: {
     marginBottom: 16,
     maxWidth: '48%',
   },
@@ -377,7 +409,6 @@ const styles = StyleSheet.create({
     color: C.blue,
     fontSize: 12,
     fontWeight: '600',
-    flexShrink: 0,
   },
   weekAmounts: {
     flexDirection: 'row',
@@ -401,13 +432,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: mono,
   },
+  dualBar: {
+    marginBottom: 4,
+  },
   dualBarTrack: {
     height: 8,
     borderRadius: 99,
     overflow: 'hidden',
     flexDirection: 'row',
-    backgroundColor: C.purple + '18',
-    marginBottom: 4,
   },
   dualBarEarned: {
     height: 8,
