@@ -6,6 +6,7 @@ import { C } from '../../lib/constants';
 import { getDayOfWeekAverages, groupShiftsByWeek, DayAverage, WeekGroup } from '../../lib/helpers';
 import ShiftCard from '../../components/shifts/ShiftCard';
 import ShiftForm from '../../components/shifts/ShiftForm';
+import CalendarView from '../../components/shifts/CalendarView';
 import StatCard from '../../components/ui/StatCard';
 import ProgressBar from '../../components/ui/ProgressBar';
 
@@ -13,6 +14,7 @@ export default function ShiftsScreen() {
   const { data, addShift, deleteShift } = useData();
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
 
@@ -50,13 +52,41 @@ export default function ShiftsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Serving Shifts</Text>
-          <TouchableOpacity style={styles.logBtn} onPress={() => setShowForm(true)}>
-            <Text style={styles.logBtnText}>+ Log Shift</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <View style={styles.viewToggle}>
+              <TouchableOpacity
+                style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
+                onPress={() => setViewMode('list')}
+              >
+                <Text style={[styles.viewToggleText, viewMode === 'list' && styles.viewToggleTextActive]}>☰</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.viewToggleBtn, viewMode === 'calendar' && styles.viewToggleBtnActive]}
+                onPress={() => setViewMode('calendar')}
+              >
+                <Text style={[styles.viewToggleText, viewMode === 'calendar' && styles.viewToggleTextActive]}>▦</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.logBtn} onPress={() => setShowForm(true)}>
+              <Text style={styles.logBtnText}>+ Log Shift</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Earnings by Day */}
-        {dayAverages.length > 0 && (
+        {/* Calendar View */}
+        {viewMode === 'calendar' && (
+          <CalendarView
+            shifts={shifts}
+            onDayPress={(date, dayShifts) => {
+              if (dayShifts.length === 1) {
+                router.push(`/shift/${dayShifts[0].id}`);
+              }
+            }}
+          />
+        )}
+
+        {/* List View */}
+        {viewMode === 'list' && dayAverages.length > 0 && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Earnings by Day · tap a day to filter</Text>
             {dayAverages.map((da) => (
@@ -93,7 +123,7 @@ export default function ShiftsScreen() {
         )}
 
         {/* Selected Day Detail */}
-        {selectedDayData && (
+        {viewMode === 'list' && selectedDayData && (
           <View style={styles.dayDetailSection}>
             <Text style={styles.dayDetailTitle}>{selectedDayData.dayFull}</Text>
             <Text style={styles.dayDetailSub}>
@@ -120,7 +150,7 @@ export default function ShiftsScreen() {
         )}
 
         {/* Weekly Shift Groups */}
-        {recentWeeks.map((week) => (
+        {viewMode === 'list' && recentWeeks.map((week) => (
           <TouchableOpacity
             key={week.weekStart}
             activeOpacity={0.8}
@@ -189,7 +219,7 @@ export default function ShiftsScreen() {
         ))}
 
         {/* Overall Stats */}
-        {count > 0 && (
+        {viewMode === 'list' && count > 0 && (
           <View style={styles.statsGrid}>
             <StatCard label="TOTAL EARNED" value={`$${Math.round(totalEarned).toLocaleString()}`} accent={C.purple} />
             <StatCard label="AVG / SHIFT" value={`$${Math.round(avgPerShift)}`} accent={C.gold} />
@@ -234,6 +264,34 @@ const styles = StyleSheet.create({
     color: C.purple,
     fontSize: 18,
     fontWeight: '700',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: C.surface,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  viewToggleBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  viewToggleBtnActive: {
+    backgroundColor: C.purple + '25',
+  },
+  viewToggleText: {
+    color: C.textFaint,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  viewToggleTextActive: {
+    color: C.purple,
   },
   logBtn: {
     borderWidth: 1,
