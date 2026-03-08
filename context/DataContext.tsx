@@ -168,9 +168,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [data, save]);
 
   const clearAllData = useCallback(async () => {
-    await Storage.clear();
-    setData({ ...DEFAULT_APP_DATA, updatedAt: new Date().toISOString() });
-  }, []);
+    const preserved = {
+      geminiApiKey: data.settings.geminiApiKey,
+      roles: data.settings.roles,
+      hourlyWage: data.settings.hourlyWage,
+      defaultShiftHours: data.settings.defaultShiftHours,
+    };
+    const cleared = {
+      ...DEFAULT_APP_DATA,
+      settings: { ...DEFAULT_APP_DATA.settings, ...preserved },
+      updatedAt: new Date().toISOString(),
+    };
+    setData(cleared);
+    await Storage.set(cleared);
+  }, [data.settings]);
 
   return (
     <DataContext.Provider value={{
