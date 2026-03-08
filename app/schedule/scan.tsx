@@ -20,12 +20,13 @@ export default function ScanScheduleScreen() {
   const settings = data.settings;
 
   const [stage, setStage] = useState<Stage>('pick');
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageUris, setImageUris] = useState<string[]>([]);
   const [parsedShifts, setParsedShifts] = useState<ParsedShift[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
   const [pickError, setPickError] = useState('');
+  const [scanProgress, setScanProgress] = useState({ current: 0, total: 0 });
 
   const pickImage = async (useCamera: boolean) => {
     setPickError('');
@@ -61,22 +62,36 @@ export default function ScanScheduleScreen() {
           mediaTypes: ['images'],
           quality: 0.7,
           base64: true,
+          allowsMultipleSelection: true,
+          selectionLimit: 10,
         });
 
-    if (result.canceled || !result.assets?.[0]) return;
+    if (result.canceled || !result.assets?.length) return;
 
-    const asset = result.assets[0];
-    setImageUri(asset.uri);
+    const assets = result.assets;
+    setImageUris(assets.map(a => a.uri));
     setStage('scanning');
+    setScanProgress({ current: 0, total: assets.length });
 
     try {
-      const shifts = await parseScheduleImage(
-        asset.base64!,
-        settings.roles,
-        settings.geminiApiKey!,
-      );
-      setParsedShifts(shifts);
-      setSelected(new Set(shifts.map((_, i) => i)));
+      const allShifts: ParsedShift[] = [];
+      for (let i = 0; i < assets.length; i++) {
+        setScanProgress({ current: i + 1, total: assets.length });
+        const shifts = await parseScheduleImage(
+          assets[i].base64!,
+          settings.roles,
+          settings.geminiApiKey!,
+        );
+        for (const shift of shifts) {
+          const isDup = allShifts.some(
+            s => s.date === shift.date && s.startTime === shift.startTime,
+          );
+          if (!isDup) allShifts.push(shift);
+        }
+      }
+      if (allShifts.length === 0) throw new Error('NO_SHIFTS_FOUND');
+      setParsedShifts(allShifts);
+      setSelected(new Set(allShifts.map((_, i) => i)));
       setStage('review');
     } catch (err) {
       setErrorMsg(getErrorMessage(err));
@@ -130,7 +145,7 @@ export default function ScanScheduleScreen() {
           <Text style={styles.scanIcon}>📸</Text>
           <Text style={styles.pickTitle}>Scan Your Schedule</Text>
           <Text style={styles.pickSub}>
-            Take a photo of your posted schedule or pick a screenshot
+            Take a photo or select multiple screenshots at once
           </Text>
           {pickError ? (
             <View style={styles.pickErrorBox}>
@@ -170,12 +185,16 @@ export default function ScanScheduleScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.centered}>
-          {imageUri && (
-            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+          {imageUris.length > 0 && (
+            <Image source={{ uri: imageUris[Math.max(0, scanProgress.current - 1)] }} style={styles.previewImage} />
           )}
           <ActivityIndicator size="large" color={C.purple} style={{ marginTop: 20 }} />
           <Text style={styles.scanningText}>SCANNING SCHEDULE...</Text>
-          <Text style={styles.scanSubtext}>AI is reading your shifts</Text>
+          <Text style={styles.scanSubtext}>
+            {scanProgress.total > 1
+              ? `Scanning photo ${scanProgress.current} of ${scanProgress.total}`
+              : 'AI is reading your shifts'}
+          </Text>
         </View>
       </View>
     );
@@ -218,8 +237,12 @@ export default function ScanScheduleScreen() {
           </Text>
         </View>
 
-        {imageUri && (
-          <Image source={{ uri: imageUri }} style={styles.reviewThumb} />
+        {imageUris.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbRow}>
+            {imageUris.map((uri, i) => (
+              <Image key={i} source={{ uri }} style={[styles.reviewThumb, imageUris.length > 1 && styles.reviewThumbMulti]} />
+            ))}
+          </ScrollView>
         )}
 
         {parsedShifts.map((shift, i) => (
@@ -386,12 +409,20 @@ const styles = StyleSheet.create({
     fontFamily: mono,
     marginTop: 4,
   },
+  thumbRow: {
+    marginBottom: 16,
+  },
   reviewThumb: {
     width: '100%',
     height: 120,
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 0,
     opacity: 0.5,
+  },
+  reviewThumbMulti: {
+    width: 140,
+    height: 100,
+    marginRight: 8,
   },
 
   // Bottom bar
