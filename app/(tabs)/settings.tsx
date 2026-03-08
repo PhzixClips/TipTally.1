@@ -14,6 +14,8 @@ export default function SettingsScreen() {
   const [apiKey, setApiKey] = useState(settings.geminiApiKey || '');
   const [apiKeySaved, setApiKeySaved] = useState(!!settings.geminiApiKey);
   const [clearConfirmStep, setClearConfirmStep] = useState<0 | 1 | 2>(0);
+  const [editingRole, setEditingRole] = useState<string | null>(null);
+  const [roleWageInput, setRoleWageInput] = useState('');
 
   const saveApiKey = () => {
     const trimmed = apiKey.trim();
@@ -104,17 +106,33 @@ export default function SettingsScreen() {
       {/* Roles */}
       <Text style={styles.sectionTitle}>ROLES</Text>
       <View style={styles.section}>
-        <View style={styles.roleChips}>
-          {settings.roles.map(r => (
-            <View key={r} style={styles.roleChip}>
-              <Text style={styles.roleChipText}>{r}</Text>
+        {settings.roles.map(r => {
+          const roleWage = settings.roleWages?.[r];
+          return (
+            <View key={r} style={styles.roleRow}>
+              <TouchableOpacity
+                style={styles.roleInfo}
+                onPress={() => {
+                  setEditingRole(r);
+                  setRoleWageInput(roleWage != null ? String(roleWage) : String(settings.hourlyWage));
+                }}
+              >
+                <Text style={styles.roleChipText}>{r}</Text>
+                <Text style={styles.roleWageText}>
+                  ${roleWage != null ? roleWage.toFixed(2) : settings.hourlyWage.toFixed(2)}/hr
+                  {roleWage == null ? ' (default)' : ''}
+                </Text>
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => removeRole(r)}>
                 <Text style={styles.roleRemove}>X</Text>
               </TouchableOpacity>
             </View>
-          ))}
-        </View>
-        <View style={styles.addRoleRow}>
+          );
+        })}
+        {settings.roles.length === 0 && (
+          <Text style={styles.sublabel}>No roles — scan your schedule to auto-add</Text>
+        )}
+        <View style={[styles.addRoleRow, { marginTop: settings.roles.length > 0 ? 12 : 0 }]}>
           <TextInput
             value={newRole}
             onChangeText={setNewRole}
@@ -302,6 +320,59 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Role Wage Edit Modal */}
+      <Modal visible={editingRole !== null} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>{editingRole} Hourly Wage</Text>
+            <Text style={styles.modalMsg}>
+              Set a custom hourly rate for this role. Used when calculating tips.
+            </Text>
+            <View style={styles.roleWageInputRow}>
+              <Text style={styles.prefix}>$</Text>
+              <TextInput
+                value={roleWageInput}
+                onChangeText={setRoleWageInput}
+                keyboardType="decimal-pad"
+                style={[styles.smallInput, { flex: 1, textAlign: 'left' }]}
+                autoFocus
+              />
+              <Text style={styles.roleWageSuffix}>/hr</Text>
+            </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => {
+                  // Reset to default (remove override)
+                  if (editingRole) {
+                    const updated = { ...settings.roleWages };
+                    delete updated[editingRole];
+                    updateSettings({ roleWages: updated });
+                  }
+                  setEditingRole(null);
+                }}
+              >
+                <Text style={styles.modalCancelText}>Use Default</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalDeleteBtn, { backgroundColor: C.green }]}
+                onPress={() => {
+                  const val = parseFloat(roleWageInput);
+                  if (editingRole && val >= 0) {
+                    updateSettings({
+                      roleWages: { ...settings.roleWages, [editingRole]: val },
+                    });
+                  }
+                  setEditingRole(null);
+                }}
+              >
+                <Text style={styles.modalDeleteText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -403,22 +474,20 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: C.green,
   },
-  roleChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 14,
-  },
-  roleChip: {
+  roleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     backgroundColor: C.blueBg,
     borderWidth: 1,
     borderColor: C.blue + '40',
     borderRadius: 10,
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  roleInfo: {
+    flex: 1,
+    gap: 2,
   },
   roleChipText: {
     color: C.blue,
@@ -426,10 +495,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  roleWageText: {
+    color: C.textMuted,
+    fontFamily: mono,
+    fontSize: 10,
+  },
   roleRemove: {
     color: C.danger,
     fontSize: 12,
     fontWeight: '700',
+    paddingLeft: 12,
+  },
+  roleWageInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 20,
+  },
+  roleWageSuffix: {
+    color: C.textMuted,
+    fontFamily: mono,
+    fontSize: 14,
   },
   addRoleRow: {
     flexDirection: 'row',

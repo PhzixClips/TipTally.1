@@ -8,7 +8,11 @@ export const Storage = {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const data = JSON.parse(raw) as AppData;
-        return { ...DEFAULT_APP_DATA, ...data };
+        return {
+          ...DEFAULT_APP_DATA,
+          ...data,
+          settings: { ...DEFAULT_APP_DATA.settings, ...data.settings },
+        };
       }
     } catch {}
     return { ...DEFAULT_APP_DATA, updatedAt: new Date().toISOString() };

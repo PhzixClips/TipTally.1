@@ -318,7 +318,7 @@ export default function ScheduleScreen() {
           initialHours={String(logTargetEntry.estimatedHours)}
           title="LOG SCHEDULED SHIFT"
           buttonLabel="LOG SHIFT"
-          hourlyWage={data.settings.hourlyWage}
+          hourlyWage={data.settings.roleWages?.[logTargetEntry.role] ?? data.settings.hourlyWage}
         />
       )}
     </View>

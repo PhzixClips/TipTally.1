@@ -146,7 +146,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const entry = data.schedule.find(s => s.id === scheduleId);
     if (!entry) return;
 
-    const wage = data.settings.hourlyWage;
+    const wage = data.settings.roleWages?.[entry.role] ?? data.settings.hourlyWage;
     const shift: Shift = {
       id: generateId(),
       date: entry.date,
@@ -176,6 +176,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const preserved = {
       geminiApiKey: data.settings.geminiApiKey,
       roles: data.settings.roles,
+      roleWages: data.settings.roleWages,
       hourlyWage: data.settings.hourlyWage,
       defaultShiftHours: data.settings.defaultShiftHours,
     };

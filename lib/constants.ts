@@ -46,6 +46,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hourlyWage: 12.15,
   defaultShiftHours: 6,
   roles: ['Server', 'Patio Server', 'Bartender'],
+  roleWages: {},
   notificationsEnabled: true,
   shiftReminderMinutes: 60,
   weeklySummaryEnabled: true,

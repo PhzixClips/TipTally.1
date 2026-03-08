@@ -37,6 +37,7 @@ export interface Settings {
   hourlyWage: number;
   defaultShiftHours: number;
   roles: string[];
+  roleWages: Record<string, number>; // per-role hourly wage overrides
   notificationsEnabled: boolean;
   shiftReminderMinutes: number;
   weeklySummaryEnabled: boolean;
