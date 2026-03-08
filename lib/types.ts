@@ -145,6 +145,9 @@ export interface Settings {
   // Phase 3 - multi-job
   activeJobId?: string;
   mileageRate?: number;
+  // Appearance
+  appearance?: 'light' | 'dark' | 'system';
+  accentColor?: 'green' | 'yellow' | 'blue' | 'purple' | 'coral';
 }
 
 export interface AppData {

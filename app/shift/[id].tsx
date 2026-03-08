@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, Modal as RNModal, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, Platform, Modal as RNModal, TextInput, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useData } from '../../context/DataContext';
+import { useTheme } from '../../context/ThemeContext';
 import { C, DEFAULT_TAGS } from '../../lib/constants';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
@@ -10,13 +11,15 @@ import { ShiftExtras } from '../../lib/types';
 export default function EditShiftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, updateShift, deleteShift } = useData();
+  const { colors, accent } = useTheme();
   const router = useRouter();
+  const mono = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
   const shift = data.shifts.find(s => s.id === id);
   if (!shift) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.notFound}>Shift not found</Text>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <Text style={{ color: colors.textMuted, fontSize: 14, textAlign: 'center', marginTop: 60 }}>Shift not found</Text>
       </View>
     );
   }
@@ -73,20 +76,25 @@ export default function EditShiftScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.dateBox}>
-        <Text style={styles.label}>DATE</Text>
-        <Text style={styles.dateText}>{shift.displayDate}</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 24 }}>
+      <View style={{ marginBottom: 16 }}>
+        <Text style={{ color: colors.textMuted, fontSize: 10, fontFamily: mono, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6, fontWeight: '600' }}>DATE</Text>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>{shift.displayDate}</Text>
       </View>
 
-      {/* Role Selector */}
       {data.settings.roles.length > 0 && (
         <View style={{ marginBottom: 16 }}>
-          <Text style={styles.label}>ROLE</Text>
-          <View style={styles.chipRow}>
+          <Text style={{ color: colors.textMuted, fontSize: 10, fontFamily: mono, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6, fontWeight: '600' }}>ROLE</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {data.settings.roles.map(r => (
-              <TouchableOpacity key={r} style={[styles.roleChip, role === r && styles.roleChipActive]} onPress={() => setRole(role === r ? '' : r)}>
-                <Text style={[styles.roleChipText, role === r && styles.roleChipTextActive]}>{r}</Text>
+              <TouchableOpacity key={r} style={[
+                { borderWidth: 1, borderColor: colors.borderLight, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, backgroundColor: colors.surface },
+                role === r && { borderColor: C.blue, backgroundColor: C.blueBg },
+              ]} onPress={() => setRole(role === r ? '' : r)}>
+                <Text style={[
+                  { color: colors.textMuted, fontFamily: mono, fontSize: 12, fontWeight: '600' },
+                  role === r && { color: C.blue },
+                ]}>{r}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -96,7 +104,7 @@ export default function EditShiftScreen() {
       <Input label="Hours Worked" value={hours} onChangeText={setHours} placeholder="6" keyboardType="decimal-pad" />
       <Input label="Tips Made ($)" value={tips} onChangeText={setTips} placeholder="120.00" keyboardType="decimal-pad" />
 
-      <View style={styles.splitRow}>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1 }}>
           <Input label="Cash Tips ($)" value={cashTips} onChangeText={(v) => {
             setCashTips(v); if (v && tips) setCreditTips(Math.max(0, +tips - +v).toFixed(2));
@@ -109,76 +117,89 @@ export default function EditShiftScreen() {
         </View>
       </View>
 
-      <View style={styles.tipOutSection}>
-        <Text style={styles.label}>TIP OUT</Text>
-        <View style={styles.tipOutToggle}>
-          <TouchableOpacity style={[styles.toggleBtn, tipOutMode === 'percent' && styles.toggleBtnActive]} onPress={() => { setTipOutMode('percent'); setTipOutValue(''); setTotalSales(''); }}>
-            <Text style={[styles.toggleText, tipOutMode === 'percent' && styles.toggleTextActive]}>% Tips</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleBtn, tipOutMode === 'sales' && styles.toggleBtnActive]} onPress={() => { setTipOutMode('sales'); setTipOutValue(''); }}>
-            <Text style={[styles.toggleText, tipOutMode === 'sales' && styles.toggleTextActive]}>% Sales</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.toggleBtn, tipOutMode === 'cash' && styles.toggleBtnActive]} onPress={() => { setTipOutMode('cash'); setTipOutValue(String(shift.tipOut ?? 0)); setTotalSales(''); }}>
-            <Text style={[styles.toggleText, tipOutMode === 'cash' && styles.toggleTextActive]}>$</Text>
-          </TouchableOpacity>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ color: colors.textMuted, fontSize: 10, fontFamily: mono, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6, fontWeight: '600' }}>TIP OUT</Text>
+        <View style={{ flexDirection: 'row', gap: 4, marginBottom: 6 }}>
+          {(['percent', 'sales', 'cash'] as const).map(mode => (
+            <TouchableOpacity key={mode} style={[
+              { borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 12, backgroundColor: colors.surface },
+              tipOutMode === mode && { borderColor: C.purple, backgroundColor: C.purpleBg },
+            ]} onPress={() => {
+              setTipOutMode(mode);
+              if (mode === 'cash') { setTipOutValue(String(shift.tipOut ?? 0)); setTotalSales(''); }
+              else if (mode === 'percent') { setTipOutValue(''); setTotalSales(''); }
+              else { setTipOutValue(''); }
+            }}>
+              <Text style={[
+                { color: colors.textMuted, fontSize: 12, fontFamily: mono, fontWeight: '700' },
+                tipOutMode === mode && { color: C.purple },
+              ]}>{mode === 'percent' ? '% Tips' : mode === 'sales' ? '% Sales' : '$'}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
       {tipOutMode === 'sales' && <Input label="Total Sales ($)" value={totalSales} onChangeText={setTotalSales} placeholder="1500.00" keyboardType="decimal-pad" />}
       <Input label={tipOutMode === 'cash' ? 'Tip Out ($)' : 'Tip Out (%)'} value={tipOutValue} onChangeText={setTipOutValue} placeholder={tipOutMode === 'cash' ? '65.00' : '4.5'} keyboardType="decimal-pad" />
 
       <View style={{ marginBottom: 16 }}>
-        <Text style={styles.label}>NOTES</Text>
-        <TextInput value={notes} onChangeText={setNotes} placeholder="Weather, section, events..." placeholderTextColor={C.textFaint} multiline maxLength={200} style={styles.notesInput} />
+        <Text style={{ color: colors.textMuted, fontSize: 10, fontFamily: mono, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6, fontWeight: '600' }}>NOTES</Text>
+        <TextInput value={notes} onChangeText={setNotes} placeholder="Weather, section, events..." placeholderTextColor={colors.textFaint} multiline maxLength={200} style={{ backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, color: colors.text, fontFamily: mono, fontSize: 14, minHeight: 60, textAlignVertical: 'top' }} />
       </View>
 
       <View style={{ marginBottom: 16 }}>
-        <Text style={styles.label}>TAGS</Text>
-        <View style={styles.chipRow}>
+        <Text style={{ color: colors.textMuted, fontSize: 10, fontFamily: mono, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6, fontWeight: '600' }}>TAGS</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {DEFAULT_TAGS.map(tag => (
-            <TouchableOpacity key={tag} style={[styles.tagChip, selectedTags.includes(tag) && styles.tagChipActive]} onPress={() => toggleTag(tag)}>
-              <Text style={[styles.tagChipText, selectedTags.includes(tag) && styles.tagChipTextActive]}>{tag}</Text>
+            <TouchableOpacity key={tag} style={[
+              { borderWidth: 1, borderColor: colors.borderLight, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.surface },
+              selectedTags.includes(tag) && { borderColor: C.gold, backgroundColor: C.goldBg },
+            ]} onPress={() => toggleTag(tag)}>
+              <Text style={[
+                { color: colors.textMuted, fontFamily: mono, fontSize: 10, fontWeight: '600' },
+                selectedTags.includes(tag) && { color: C.gold },
+              ]}>{tag}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
       {hours ? (
-        <View style={styles.breakdown}>
-          <View style={styles.breakdownRow}>
-            <Text style={styles.bLabel}>Wage ({hours}hr x ${shift.hourlyWage})</Text>
-            <Text style={styles.bValue}>${wageAmount.toFixed(2)}</Text>
+        <View style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={{ color: colors.textMuted, fontSize: 12, fontFamily: mono }}>Wage ({hours}hr x ${shift.hourlyWage})</Text>
+            <Text style={{ color: colors.textSoft, fontSize: 12, fontFamily: mono }}>${wageAmount.toFixed(2)}</Text>
           </View>
-          <View style={styles.breakdownRow}>
-            <Text style={[styles.bLabel, { color: C.gold }]}>Tips</Text>
-            <Text style={[styles.bValue, { color: C.gold }]}>${tipsNum.toFixed(2)}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={{ color: C.gold, fontSize: 12, fontFamily: mono }}>Tips</Text>
+            <Text style={{ color: C.gold, fontSize: 12, fontFamily: mono }}>${tipsNum.toFixed(2)}</Text>
           </View>
           {tipOutAmount > 0 && (
-            <View style={styles.breakdownRow}>
-              <Text style={[styles.bLabel, { color: C.coral }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={{ color: C.coral, fontSize: 12, fontFamily: mono }}>
                 Tip Out {tipOutMode === 'percent' && tipOutValue ? `(${tipOutValue}% tips)` : tipOutMode === 'sales' && tipOutValue ? `(${tipOutValue}% sales)` : ''}
               </Text>
-              <Text style={[styles.bValue, { color: C.coral }]}>-${tipOutAmount.toFixed(2)}</Text>
+              <Text style={{ color: C.coral, fontSize: 12, fontFamily: mono }}>-${tipOutAmount.toFixed(2)}</Text>
             </View>
           )}
-          <View style={[styles.breakdownRow, styles.breakdownTotal]}>
-            <Text style={[styles.bLabel, { color: C.green, fontWeight: '700' }]}>Total Take-Home</Text>
-            <Text style={[styles.bValue, { color: C.green, fontWeight: '700' }]}>${totalTakeHome.toFixed(2)}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, marginTop: 4 }}>
+            <Text style={{ color: accent.primary, fontSize: 12, fontFamily: mono, fontWeight: '700' }}>Total Take-Home</Text>
+            <Text style={{ color: accent.primary, fontSize: 12, fontFamily: mono, fontWeight: '700' }}>${totalTakeHome.toFixed(2)}</Text>
           </View>
         </View>
       ) : null}
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={{ color: C.danger, fontSize: 12, fontFamily: mono, textAlign: 'center', marginBottom: 12 }}>{error}</Text> : null}
 
-      <Button onPress={handleSave} color={C.green} filled size="lg" style={{ marginBottom: 12 }}>SAVE CHANGES</Button>
+      <Button onPress={handleSave} color={accent.primary} filled size="lg" style={{ marginBottom: 12 }}>SAVE CHANGES</Button>
       <Button onPress={() => setShowDeleteModal(true)} color={C.danger} size="lg">DELETE SHIFT</Button>
 
       <RNModal visible={showDeleteModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Delete Shift</Text>
-            <Text style={styles.modalMsg}>Remove {shift.displayDate} shift?</Text>
-            <View style={styles.modalButtons}>
-              <Button onPress={() => setShowDeleteModal(false)} color={C.textMuted}>CANCEL</Button>
+        <View style={{ flex: 1, backgroundColor: '#000000cc', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 24, width: '100%', maxWidth: 320, alignItems: 'center' }}>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 8 }}>Delete Shift</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13, fontFamily: mono, textAlign: 'center', marginBottom: 20 }}>Remove {shift.displayDate} shift?</Text>
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <Button onPress={() => setShowDeleteModal(false)} color={colors.textMuted}>CANCEL</Button>
               <Button onPress={handleDelete} color={C.danger} filled>DELETE</Button>
             </View>
           </View>
@@ -187,42 +208,3 @@ export default function EditShiftScreen() {
     </ScrollView>
   );
 }
-
-const mono = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
-  content: { padding: 24 },
-  notFound: { color: C.textMuted, fontSize: 14, textAlign: 'center', marginTop: 60 },
-  dateBox: { marginBottom: 16 },
-  label: { color: C.textMuted, fontSize: 10, fontFamily: mono, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6, fontWeight: '600' },
-  dateText: { color: C.text, fontSize: 18, fontWeight: '700' },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  roleChip: { borderWidth: 1, borderColor: C.borderLight, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14, backgroundColor: C.surface },
-  roleChipActive: { borderColor: C.blue, backgroundColor: C.blueBg },
-  roleChipText: { color: C.textMuted, fontFamily: mono, fontSize: 12, fontWeight: '600' },
-  roleChipTextActive: { color: C.blue },
-  splitRow: { flexDirection: 'row', gap: 10 },
-  tipOutSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  tipOutToggle: { flexDirection: 'row', gap: 4, marginBottom: 6 },
-  toggleBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 12, backgroundColor: C.surface },
-  toggleBtnActive: { borderColor: C.purple, backgroundColor: C.purpleBg },
-  toggleText: { color: C.textMuted, fontSize: 12, fontFamily: mono, fontWeight: '700' },
-  toggleTextActive: { color: C.purple },
-  notesInput: { backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16, color: C.text, fontFamily: mono, fontSize: 14, minHeight: 60, textAlignVertical: 'top' },
-  tagChip: { borderWidth: 1, borderColor: C.borderLight, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: C.surface },
-  tagChipActive: { borderColor: C.gold, backgroundColor: C.goldBg },
-  tagChipText: { color: C.textMuted, fontFamily: mono, fontSize: 10, fontWeight: '600' },
-  tagChipTextActive: { color: C.gold },
-  breakdown: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 14, marginBottom: 16 },
-  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  breakdownTotal: { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 8, marginTop: 4, marginBottom: 0 },
-  bLabel: { color: C.textMuted, fontSize: 12, fontFamily: mono },
-  bValue: { color: C.textSoft, fontSize: 12, fontFamily: mono },
-  error: { color: C.danger, fontSize: 12, fontFamily: mono, textAlign: 'center', marginBottom: 12 },
-  modalOverlay: { flex: 1, backgroundColor: '#000000cc', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalBox: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 24, width: '100%', maxWidth: 320, alignItems: 'center' },
-  modalTitle: { color: C.text, fontSize: 16, fontWeight: '700', marginBottom: 8 },
-  modalMsg: { color: C.textMuted, fontSize: 13, fontFamily: mono, textAlign: 'center', marginBottom: 20 },
-  modalButtons: { flexDirection: 'row', gap: 12, width: '100%' },
-});

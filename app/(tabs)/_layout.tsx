@@ -1,59 +1,55 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { C } from '../../lib/constants';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function TabLayout() {
+  const { colors, accent } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: C.green,
-        tabBarInactiveTintColor: C.textFaint,
+        tabBarActiveTintColor: accent.primary,
+        tabBarInactiveTintColor: colors.textFaint,
         tabBarStyle: {
-          backgroundColor: C.bg,
-          borderTopColor: C.border,
+          backgroundColor: colors.bg,
+          borderTopColor: colors.border,
           borderTopWidth: 1,
           paddingTop: 4,
         },
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          letterSpacing: 0.5,
         },
-        headerStyle: { backgroundColor: C.bg },
-        headerTintColor: C.text,
-        headerTitleStyle: {
-          fontFamily: 'SpaceMono',
-          fontSize: 16,
-          letterSpacing: 2,
-        },
+        headerStyle: { backgroundColor: colors.bg },
+        headerTintColor: colors.text,
         headerShown: false,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
+          title: 'Home',
+          tabBarIcon: ({ color }) => (
+            <SymbolView name={{ ios: 'house.fill', android: 'home', web: 'home' }} tintColor={color} size={24} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="shifts"
+        options={{
           title: 'Shifts',
           tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'dollarsign.circle.fill', android: 'attach_money', web: 'attach_money' }} tintColor={color} size={24} />
+            <SymbolView name={{ ios: 'list.bullet.rectangle.fill', android: 'receipt_long', web: 'receipt_long' }} tintColor={color} size={24} />
           ),
         }}
       />
       <Tabs.Screen
-        name="schedule"
+        name="stats"
         options={{
-          title: 'Schedule',
+          title: 'Stats',
           tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'calendar', android: 'calendar_today', web: 'calendar_today' }} tintColor={color} size={24} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="tax"
-        options={{
-          title: 'Tax',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'percent', android: 'percent', web: 'percent' }} tintColor={color} size={24} />
+            <SymbolView name={{ ios: 'chart.bar.fill', android: 'bar_chart', web: 'bar_chart' }} tintColor={color} size={24} />
           ),
         }}
       />
@@ -66,8 +62,9 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* Hide other tabs from the tab bar */}
-      <Tabs.Screen name="shifts" options={{ href: null }} />
+      {/* Hide legacy tabs from the tab bar */}
+      <Tabs.Screen name="schedule" options={{ href: null }} />
+      <Tabs.Screen name="tax" options={{ href: null }} />
     </Tabs>
   );
 }
