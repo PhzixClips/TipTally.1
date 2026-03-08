@@ -9,10 +9,12 @@ import { toISODate } from '../../lib/helpers';
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onSave: (date: string, hours: number, totalEarned: number) => void;
+  onSave: (date: string, hours: number, tips: number, tipOut: number) => void;
   initialDate?: string;
   initialHours?: string;
-  initialTotal?: string;
+  initialTips?: string;
+  initialTipOut?: string;
+  initialTipOutMode?: 'percent' | 'cash';
   title?: string;
   buttonLabel?: string;
   hourlyWage: number;
@@ -20,31 +22,47 @@ interface Props {
 
 export default function ShiftForm({
   visible, onClose, onSave,
-  initialDate, initialHours = '', initialTotal = '',
+  initialDate, initialHours = '', initialTips = '',
+  initialTipOut = '', initialTipOutMode = 'percent',
   title = 'LOG SHIFT', buttonLabel = 'LOG SHIFT',
   hourlyWage,
 }: Props) {
   const [date, setDate] = useState<Date>(initialDate ? new Date(initialDate + 'T12:00:00') : new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [hours, setHours] = useState(initialHours);
-  const [total, setTotal] = useState(initialTotal);
+  const [tips, setTips] = useState(initialTips);
+  const [tipOutMode, setTipOutMode] = useState<'percent' | 'cash'>(initialTipOutMode);
+  const [tipOutValue, setTipOutValue] = useState(initialTipOut);
   const [error, setError] = useState('');
 
-  const tips = hours && total ? Math.max(0, +total - +hours * hourlyWage) : null;
+  const wageAmount = hours ? +hours * hourlyWage : 0;
+  const tipsNum = tips ? +tips : 0;
+  const tipOutAmount = tipOutValue
+    ? tipOutMode === 'percent'
+      ? +(tipsNum * (+tipOutValue / 100)).toFixed(2)
+      : +tipOutValue
+    : 0;
+  const netTips = Math.max(0, tipsNum - tipOutAmount);
+  const totalTakeHome = wageAmount + netTips;
 
   const handleSave = () => {
-    if (!hours || !total) {
-      setError(!hours ? 'Enter hours worked' : 'Enter total made');
+    if (!hours) {
+      setError('Enter hours worked');
       return;
     }
-    if (+hours <= 0 || +total < 0) {
-      setError('Values must be positive');
+    if (+hours <= 0) {
+      setError('Hours must be positive');
+      return;
+    }
+    if (tips && +tips < 0) {
+      setError('Tips cannot be negative');
       return;
     }
     setError('');
-    onSave(toISODate(date), +hours, +total);
+    onSave(toISODate(date), +hours, tipsNum, tipOutAmount);
     setHours('');
-    setTotal('');
+    setTips('');
+    setTipOutValue('');
     onClose();
   };
 
@@ -89,24 +107,61 @@ export default function ShiftForm({
             keyboardType="decimal-pad"
           />
           <Input
-            label="Total Made Today ($)"
-            value={total}
-            onChangeText={setTotal}
-            placeholder="396.00"
+            label="Tips Made ($)"
+            value={tips}
+            onChangeText={setTips}
+            placeholder="120.00"
             keyboardType="decimal-pad"
           />
 
-          {hours && total ? (
+          {/* Tip Out Section */}
+          <View style={styles.tipOutSection}>
+            <Text style={styles.label}>TIP OUT</Text>
+            <View style={styles.tipOutToggle}>
+              <TouchableOpacity
+                style={[styles.toggleBtn, tipOutMode === 'percent' && styles.toggleBtnActive]}
+                onPress={() => { setTipOutMode('percent'); setTipOutValue(''); }}
+              >
+                <Text style={[styles.toggleText, tipOutMode === 'percent' && styles.toggleTextActive]}>%</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleBtn, tipOutMode === 'cash' && styles.toggleBtnActive]}
+                onPress={() => { setTipOutMode('cash'); setTipOutValue(''); }}
+              >
+                <Text style={[styles.toggleText, tipOutMode === 'cash' && styles.toggleTextActive]}>$</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <Input
+            label={tipOutMode === 'percent' ? 'Tip Out (%)' : 'Tip Out ($)'}
+            value={tipOutValue}
+            onChangeText={setTipOutValue}
+            placeholder={tipOutMode === 'percent' ? '4.5' : '65.00'}
+            keyboardType="decimal-pad"
+          />
+
+          {/* Breakdown */}
+          {hours ? (
             <View style={styles.breakdown}>
               <View style={styles.breakdownRow}>
                 <Text style={styles.breakdownLabel}>Wage ({hours}hr x ${hourlyWage})</Text>
-                <Text style={styles.breakdownValue}>${(+hours * hourlyWage).toFixed(2)}</Text>
+                <Text style={styles.breakdownValue}>${wageAmount.toFixed(2)}</Text>
               </View>
               <View style={styles.breakdownRow}>
-                <Text style={[styles.breakdownLabel, { color: C.gold }]}>Tips (calculated)</Text>
-                <Text style={[styles.breakdownValue, { color: C.gold, fontWeight: '700' }]}>
-                  ${tips?.toFixed(2)}
-                </Text>
+                <Text style={[styles.breakdownLabel, { color: C.gold }]}>Tips</Text>
+                <Text style={[styles.breakdownValue, { color: C.gold }]}>${tipsNum.toFixed(2)}</Text>
+              </View>
+              {tipOutAmount > 0 && (
+                <View style={styles.breakdownRow}>
+                  <Text style={[styles.breakdownLabel, { color: C.coral }]}>
+                    Tip Out {tipOutMode === 'percent' && tipOutValue ? `(${tipOutValue}%)` : ''}
+                  </Text>
+                  <Text style={[styles.breakdownValue, { color: C.coral }]}>-${tipOutAmount.toFixed(2)}</Text>
+                </View>
+              )}
+              <View style={[styles.breakdownRow, styles.breakdownTotal]}>
+                <Text style={[styles.breakdownLabel, { color: C.green, fontWeight: '700' }]}>Total Take-Home</Text>
+                <Text style={[styles.breakdownValue, { color: C.green, fontWeight: '700' }]}>${totalTakeHome.toFixed(2)}</Text>
               </View>
             </View>
           ) : null}
@@ -121,7 +176,7 @@ export default function ShiftForm({
             onPress={handleSave}
             color={C.green}
             filled
-            disabled={!hours || !total}
+            disabled={!hours}
             size="lg"
             style={{ marginTop: 8 }}
           >
@@ -201,6 +256,38 @@ const styles = StyleSheet.create({
     fontFamily: mono,
     fontSize: 14,
   },
+  tipOutSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 0,
+  },
+  tipOutToggle: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 6,
+  },
+  toggleBtn: {
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    backgroundColor: C.surface,
+  },
+  toggleBtnActive: {
+    borderColor: C.purple,
+    backgroundColor: C.purpleBg,
+  },
+  toggleText: {
+    color: C.textMuted,
+    fontSize: 12,
+    fontFamily: mono,
+    fontWeight: '700',
+  },
+  toggleTextActive: {
+    color: C.purple,
+  },
   breakdown: {
     backgroundColor: C.surface,
     borderWidth: 1,
@@ -213,6 +300,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 6,
+  },
+  breakdownTotal: {
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    paddingTop: 8,
+    marginTop: 4,
+    marginBottom: 0,
   },
   breakdownLabel: {
     color: C.textMuted,

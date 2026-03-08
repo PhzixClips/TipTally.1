@@ -211,7 +211,7 @@ export default function ShiftsScreen() {
       <ShiftForm
         visible={showForm}
         onClose={() => setShowForm(false)}
-        onSave={addShift}
+        onSave={(date, hours, tips, tipOut) => addShift(date, hours, tips, tipOut)}
         hourlyWage={data.settings.hourlyWage}
       />
     </View>

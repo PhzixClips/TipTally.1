@@ -2,19 +2,20 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { AppData, Shift, ScheduledShift, Settings } from '../lib/types';
 import { Storage } from '../lib/storage';
 import { DEFAULT_APP_DATA } from '../lib/constants';
-import { generateId, formatDisplayDate, getDayOfWeek, calculateTips } from '../lib/helpers';
+import { generateId, formatDisplayDate, getDayOfWeek } from '../lib/helpers';
 
 interface DataContextType {
   data: AppData;
   loading: boolean;
-  addShift: (date: string, hours: number, totalEarned: number) => void;
-  updateShift: (id: string, date: string, hours: number, totalEarned: number) => void;
+  addShift: (date: string, hours: number, tips: number, tipOut: number) => void;
+  updateShift: (id: string, date: string, hours: number, tips: number, tipOut: number) => void;
   deleteShift: (id: string) => void;
   addScheduledShift: (date: string, startTime: string, role: string, estimatedHours: number) => void;
   addScheduledShifts: (shifts: { date: string; startTime: string; role: string; estimatedHours: number }[]) => void;
   updateScheduledShift: (id: string, updates: Partial<ScheduledShift>) => void;
   deleteScheduledShift: (id: string) => void;
-  logScheduledShift: (scheduleId: string, hours: number, totalEarned: number) => void;
+  logScheduledShift: (scheduleId: string, hours: number, tips: number, tipOut: number) => void;
+  unlogScheduledShift: (scheduleId: string) => void;
   updateSettings: (updates: Partial<Settings>) => void;
   clearAllData: () => Promise<void>;
 }
@@ -43,15 +44,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await Storage.set(sorted);
   }, []);
 
-  const addShift = useCallback((date: string, hours: number, totalEarned: number) => {
+  const addShift = useCallback((date: string, hours: number, tips: number, tipOut: number) => {
     const wage = data.settings.hourlyWage;
     const shift: Shift = {
       id: generateId(),
       date,
       displayDate: formatDisplayDate(date),
       hours,
-      totalEarned,
-      tips: calculateTips(totalEarned, hours, wage),
+      totalEarned: +(hours * wage + tips - tipOut).toFixed(2),
+      tips,
+      tipOut,
       hourlyWage: wage,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -59,7 +61,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     save({ ...data, shifts: [...data.shifts, shift] });
   }, [data, save]);
 
-  const updateShift = useCallback((id: string, date: string, hours: number, totalEarned: number) => {
+  const updateShift = useCallback((id: string, date: string, hours: number, tips: number, tipOut: number) => {
     save({
       ...data,
       shifts: data.shifts.map(s => {
@@ -69,8 +71,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           date,
           displayDate: formatDisplayDate(date),
           hours,
-          totalEarned,
-          tips: calculateTips(totalEarned, hours, s.hourlyWage),
+          tips,
+          tipOut,
+          totalEarned: +(hours * s.hourlyWage + tips - tipOut).toFixed(2),
           updatedAt: new Date().toISOString(),
         };
       }),
@@ -118,17 +121,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         updatedAt: new Date().toISOString(),
       });
     }
-    if (newEntries.length > 0) {
-      // Auto-add any new roles found in the shifts
-      const currentRoles = data.settings.roles;
-      const newRoles = [...new Set(
-        newEntries
-          .map(e => e.role)
-          .filter(r => r && r !== 'Unknown' && !currentRoles.includes(r))
-      )];
-      const updatedSettings = newRoles.length > 0
-        ? { ...data.settings, roles: [...currentRoles, ...newRoles] }
-        : data.settings;
+    // Auto-add any new roles found in ALL incoming shifts (not just non-dupes)
+    const currentRoles = data.settings.roles;
+    const newRoles = [...new Set(
+      shifts
+        .map(s => s.role)
+        .filter(r => r && r !== 'Unknown' && !currentRoles.includes(r))
+    )];
+    const updatedSettings = newRoles.length > 0
+      ? { ...data.settings, roles: [...currentRoles, ...newRoles] }
+      : data.settings;
+
+    if (newEntries.length > 0 || newRoles.length > 0) {
       save({ ...data, settings: updatedSettings, schedule: [...data.schedule, ...newEntries] });
     }
   }, [data, save]);
@@ -152,7 +156,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     save({ ...data, schedule: data.schedule.filter(s => s.id !== id) });
   }, [data, save]);
 
-  const logScheduledShift = useCallback((scheduleId: string, hours: number, totalEarned: number) => {
+  const logScheduledShift = useCallback((scheduleId: string, hours: number, tips: number, tipOut: number) => {
     const entry = data.schedule.find(s => s.id === scheduleId);
     if (!entry) return;
 
@@ -162,8 +166,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       date: entry.date,
       displayDate: entry.displayDate,
       hours,
-      totalEarned,
-      tips: calculateTips(totalEarned, hours, wage),
+      totalEarned: +(hours * wage + tips - tipOut).toFixed(2),
+      tips,
+      tipOut,
       hourlyWage: wage,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -174,6 +179,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       shifts: [...data.shifts, shift],
       schedule: data.schedule.map(s =>
         s.id === scheduleId ? { ...s, logged: true, loggedShiftId: shift.id, updatedAt: new Date().toISOString() } : s
+      ),
+    });
+  }, [data, save]);
+
+  const unlogScheduledShift = useCallback((scheduleId: string) => {
+    const entry = data.schedule.find(s => s.id === scheduleId);
+    if (!entry || !entry.logged) return;
+
+    // Remove the linked shift and reset the scheduled shift
+    const shiftsWithout = entry.loggedShiftId
+      ? data.shifts.filter(s => s.id !== entry.loggedShiftId)
+      : data.shifts;
+
+    save({
+      ...data,
+      shifts: shiftsWithout,
+      schedule: data.schedule.map(s =>
+        s.id === scheduleId
+          ? { ...s, logged: false, loggedShiftId: undefined, updatedAt: new Date().toISOString() }
+          : s
       ),
     });
   }, [data, save]);
@@ -203,7 +228,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     <DataContext.Provider value={{
       data, loading,
       addShift, updateShift, deleteShift,
-      addScheduledShift, addScheduledShifts, updateScheduledShift, deleteScheduledShift, logScheduledShift,
+      addScheduledShift, addScheduledShifts, updateScheduledShift, deleteScheduledShift, logScheduledShift, unlogScheduledShift,
       updateSettings, clearAllData,
     }}>
       {children}

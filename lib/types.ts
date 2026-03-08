@@ -3,8 +3,9 @@ export interface Shift {
   date: string;           // ISO "2026-03-06"
   displayDate: string;    // "Mar 6"
   hours: number;
-  totalEarned: number;    // What user enters (wage + tips combined)
-  tips: number;           // Calculated: totalEarned - (hours * hourlyWage)
+  totalEarned: number;    // Calculated: (hours * hourlyWage) + tips - tipOut
+  tips: number;           // Gross tips entered by user
+  tipOut: number;         // Tip out amount in dollars
   hourlyWage: number;     // Snapshot of wage at time of logging
   shiftTime?: string;     // "4:30 PM" - optional start time for display
   createdAt: string;

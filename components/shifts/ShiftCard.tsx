@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Modal as RNModal } from 'react-native';
 import { C } from '../../lib/constants';
 import { Shift } from '../../lib/types';
+import Button from '../ui/Button';
 
 interface Props {
   shift: Shift;
@@ -11,19 +12,10 @@ interface Props {
 }
 
 export default function ShiftCard({ shift, onEdit, onDelete, startTime }: Props) {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const total = shift.totalEarned;
   const hourly = total / shift.hours;
-
-  const confirmDelete = () => {
-    Alert.alert(
-      'Delete Shift',
-      `Remove ${shift.displayDate} shift ($${Math.round(total)})?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: onDelete },
-      ]
-    );
-  };
+  const tipOut = shift.tipOut ?? 0;
 
   return (
     <View style={styles.card}>
@@ -34,6 +26,9 @@ export default function ShiftCard({ shift, onEdit, onDelete, startTime }: Props)
             {shift.hours}hrs · ${shift.hourlyWage}/hr · ${hourly.toFixed(2)}/hr eff.
           </Text>
           <Text style={styles.tips}>tips: ${shift.tips.toFixed(2)}</Text>
+          {tipOut > 0 && (
+            <Text style={styles.tipOut}>tip out: -${tipOut.toFixed(2)}</Text>
+          )}
           {startTime && (
             <Text style={styles.shiftTime}>shift: {startTime}</Text>
           )}
@@ -44,12 +39,26 @@ export default function ShiftCard({ shift, onEdit, onDelete, startTime }: Props)
             <TouchableOpacity onPress={onEdit} style={styles.editBtn}>
               <Text style={styles.editText}>Edit</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={confirmDelete} style={styles.delBtn}>
+            <TouchableOpacity onPress={() => setShowDeleteModal(true)} style={styles.delBtn}>
               <Text style={styles.delText}>×</Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
+
+      {/* Delete confirmation modal (works on web unlike Alert.alert) */}
+      <RNModal visible={showDeleteModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Delete Shift</Text>
+            <Text style={styles.modalMsg}>Remove {shift.displayDate} shift (${Math.round(total)})?</Text>
+            <View style={styles.modalButtons}>
+              <Button onPress={() => setShowDeleteModal(false)} color={C.textMuted}>CANCEL</Button>
+              <Button onPress={() => { setShowDeleteModal(false); onDelete(); }} color={C.danger} filled>DELETE</Button>
+            </View>
+          </View>
+        </View>
+      </RNModal>
     </View>
   );
 }
@@ -83,6 +92,13 @@ const styles = StyleSheet.create({
   },
   tips: {
     color: C.gold,
+    fontSize: 10,
+    marginTop: 2,
+    fontFamily: mono,
+    fontWeight: '600',
+  },
+  tipOut: {
+    color: C.coral,
     fontSize: 10,
     marginTop: 2,
     fontFamily: mono,
@@ -135,5 +151,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: mono,
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: '#000000cc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalBox: {
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    color: C.text,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalMsg: {
+    color: C.textMuted,
+    fontSize: 13,
+    fontFamily: mono,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
   },
 });

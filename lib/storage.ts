@@ -11,6 +11,7 @@ export const Storage = {
         return {
           ...DEFAULT_APP_DATA,
           ...data,
+          shifts: (data.shifts || []).map(s => ({ tipOut: 0, ...s })),
           settings: { ...DEFAULT_APP_DATA.settings, ...data.settings },
         };
       }
