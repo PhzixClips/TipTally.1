@@ -48,7 +48,6 @@ export default function SettingsScreen() {
   };
 
   const removeRole = (role: string) => {
-    if (settings.roles.length <= 1) return;
     updateSettings({ roles: settings.roles.filter(r => r !== role) });
   };
 
@@ -109,11 +108,9 @@ export default function SettingsScreen() {
           {settings.roles.map(r => (
             <View key={r} style={styles.roleChip}>
               <Text style={styles.roleChipText}>{r}</Text>
-              {settings.roles.length > 1 && (
-                <TouchableOpacity onPress={() => removeRole(r)}>
-                  <Text style={styles.roleRemove}>X</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity onPress={() => removeRole(r)}>
+                <Text style={styles.roleRemove}>X</Text>
+              </TouchableOpacity>
             </View>
           ))}
         </View>
