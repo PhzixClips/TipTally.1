@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, Platform, ViewStyle } from 'react-native';
-import { C } from '../../lib/constants';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Props {
   children: string;
@@ -13,9 +13,11 @@ interface Props {
 }
 
 export default function Button({
-  children, onPress, color = C.green, filled = false,
+  children, onPress, color, filled = false,
   style, disabled, size = 'md',
 }: Props) {
+  const { accent, colors } = useTheme();
+  const btnColor = color || accent.primary;
   const padV = size === 'sm' ? 8 : size === 'lg' ? 16 : 12;
   const padH = size === 'sm' ? 14 : size === 'lg' ? 24 : 20;
   const fontSize = size === 'sm' ? 11 : size === 'lg' ? 14 : 12;
@@ -28,8 +30,8 @@ export default function Button({
       style={[
         styles.btn,
         {
-          backgroundColor: filled ? color : color + '15',
-          borderColor: color + '40',
+          backgroundColor: filled ? btnColor : btnColor + '15',
+          borderColor: btnColor + '40',
           paddingVertical: padV,
           paddingHorizontal: padH,
           opacity: disabled ? 0.4 : 1,
@@ -37,7 +39,7 @@ export default function Button({
         style,
       ]}
     >
-      <Text style={[styles.text, { color: filled ? C.bg : color, fontSize }]}>
+      <Text style={[styles.text, { color: filled ? colors.bg : btnColor, fontSize }]}>
         {children}
       </Text>
     </TouchableOpacity>

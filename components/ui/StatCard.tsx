@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import { C } from '../../lib/constants';
+import { View, Text, Platform } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Props {
   label: string;
@@ -10,49 +10,17 @@ interface Props {
   emoji?: string;
 }
 
-export default function StatCard({ label, value, sub, accent = C.green, emoji }: Props) {
+export default function StatCard({ label, value, sub, accent: accentProp, emoji }: Props) {
+  const { accent, colors } = useTheme();
+  const color = accentProp || accent.primary;
+  const mono = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+
   return (
-    <View style={[styles.card, { backgroundColor: accent + '12', borderColor: accent + '20' }]}>
-      {emoji && <Text style={styles.emoji}>{emoji}</Text>}
-      <Text style={styles.label}>{label}</Text>
-      <Text style={[styles.value, { color: accent }]}>{value}</Text>
-      {sub ? <Text style={styles.sub}>{sub}</Text> : null}
+    <View style={{ borderWidth: 1, borderRadius: 16, padding: 16, minWidth: 140, flex: 1, backgroundColor: color + '12', borderColor: color + '20' }}>
+      {emoji && <Text style={{ fontSize: 18, marginBottom: 8 }}>{emoji}</Text>}
+      <Text style={{ color: colors.textMuted, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', fontFamily: mono, marginBottom: 6, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ color, fontSize: 24, fontWeight: '800', fontFamily: mono }}>{value}</Text>
+      {sub ? <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 4, fontFamily: mono }}>{sub}</Text> : null}
     </View>
   );
 }
-
-const mono = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
-
-const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    minWidth: 140,
-    flex: 1,
-  },
-  emoji: {
-    fontSize: 18,
-    marginBottom: 8,
-  },
-  label: {
-    color: C.textMuted,
-    fontSize: 10,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    fontFamily: mono,
-    marginBottom: 6,
-    fontWeight: '600',
-  },
-  value: {
-    fontSize: 24,
-    fontWeight: '800',
-    fontFamily: mono,
-  },
-  sub: {
-    color: C.textMuted,
-    fontSize: 11,
-    marginTop: 4,
-    fontFamily: mono,
-  },
-});

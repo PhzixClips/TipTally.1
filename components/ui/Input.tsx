@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet, Platform, KeyboardTypeOptions } from 'react-native';
-import { C } from '../../lib/constants';
+import { View, Text, TextInput, Platform, KeyboardTypeOptions } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Props {
   label: string;
@@ -11,43 +11,27 @@ interface Props {
 }
 
 export default function Input({ label, value, onChangeText, placeholder, keyboardType = 'default' }: Props) {
+  const { colors } = useTheme();
+  const mono = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+
   return (
-    <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={{ marginBottom: 16 }}>
+      <Text style={{
+        color: colors.textMuted, fontSize: 11, fontFamily: mono,
+        letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8, fontWeight: '600',
+      }}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={C.textFaint}
+        placeholderTextColor={colors.textFaint}
         keyboardType={keyboardType}
-        style={styles.input}
+        style={{
+          backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border,
+          borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16,
+          color: colors.text, fontFamily: mono, fontSize: 16,
+        }}
       />
     </View>
   );
 }
-
-const mono = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
-
-const styles = StyleSheet.create({
-  wrapper: { marginBottom: 16 },
-  label: {
-    color: C.textMuted,
-    fontSize: 11,
-    fontFamily: mono,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-    fontWeight: '600',
-  },
-  input: {
-    backgroundColor: C.surface,
-    borderWidth: 1.5,
-    borderColor: C.border,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    color: C.text,
-    fontFamily: mono,
-    fontSize: 16,
-  },
-});

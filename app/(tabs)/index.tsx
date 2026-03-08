@@ -1,402 +1,276 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Platform, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useMemo } from 'react';
+import { View, Text, ScrollView, StyleSheet, Platform } from 'react-native';
 import { useData } from '../../context/DataContext';
-import { C } from '../../lib/constants';
-import { getDayOfWeekAverages, groupShiftsByWeek, DayAverage, WeekGroup } from '../../lib/helpers';
-import ShiftCard from '../../components/shifts/ShiftCard';
-import ShiftForm from '../../components/shifts/ShiftForm';
-import StatCard from '../../components/ui/StatCard';
-import ProgressBar from '../../components/ui/ProgressBar';
+import { useTheme } from '../../context/ThemeContext';
+import { getWeekStart, toISODate, getDayOfWeek } from '../../lib/helpers';
 
-export default function ShiftsScreen() {
-  const { data, addShift, deleteShift } = useData();
-  const router = useRouter();
-  const [showForm, setShowForm] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
+const mono = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
-  const shifts = data.shifts;
-  const dayAverages = useMemo(() => getDayOfWeekAverages(shifts), [shifts]);
-  const weekGroups = useMemo(() => groupShiftsByWeek(shifts), [shifts]);
+export default function HomeScreen() {
+  const { data } = useData();
+  const { colors, accent } = useTheme();
 
-  // Only show last 3 weeks
-  const recentWeeks = weekGroups.slice(0, 3);
+  // Most recent shift
+  const recentShift = useMemo(() => {
+    const sorted = [...data.shifts].sort((a, b) => b.date.localeCompare(a.date));
+    return sorted[0] || null;
+  }, [data.shifts]);
 
-  const maxDayAvg = dayAverages.length ? dayAverages[0].avgEarned : 1;
-  const bestDay = dayAverages.length ? dayAverages[0] : null;
+  // Current week data
+  const currentWeekStart = getWeekStart(toISODate(new Date()));
+  const weekShifts = useMemo(
+    () => data.shifts.filter((s) => getWeekStart(s.date) === currentWeekStart),
+    [data.shifts, currentWeekStart],
+  );
 
-  // Calculate "vs prior N" for best day
-  const bestDayVsPrior = useMemo(() => {
-    if (!bestDay || dayAverages.length < 2) return null;
-    const othersAvg = dayAverages.slice(1).reduce((s, d) => s + d.avgEarned, 0) / (dayAverages.length - 1);
-    const diff = bestDay.avgEarned - othersAvg;
-    return { diff: Math.round(Math.abs(diff)), count: dayAverages.length - 1, positive: diff >= 0 };
-  }, [dayAverages, bestDay]);
+  const weekTotal = weekShifts.reduce((s, sh) => s + sh.totalEarned, 0);
+  const weekSales = weekShifts.reduce((s, sh) => s + (sh.totalSales || 0), 0);
+  const weekTipout = weekShifts.reduce((s, sh) => s + sh.tipOut, 0);
 
-  // Overall stats
-  const count = shifts.length;
-  const totalEarned = shifts.reduce((s, sh) => s + sh.totalEarned, 0);
-  const avgPerShift = count ? totalEarned / count : 0;
-  const bestShift = count ? Math.max(...shifts.map(s => s.totalEarned)) : 0;
-  const avgHourly = count ? shifts.reduce((s, sh) => s + sh.totalEarned / sh.hours, 0) / count : 0;
+  // Group by day for bar chart
+  const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const dayTotals = useMemo(() => {
+    const map: Record<string, number> = {};
+    dayOrder.forEach((d) => (map[d] = 0));
+    weekShifts.forEach((s) => {
+      const day = getDayOfWeek(s.date);
+      map[day] = (map[day] || 0) + s.totalEarned;
+    });
+    return map;
+  }, [weekShifts]);
+  const maxDay = Math.max(1, ...Object.values(dayTotals));
 
-  // Selected day data
-  const selectedDayData = selectedDay ? dayAverages.find(d => d.day === selectedDay) : null;
+  // Recent shift breakdown values
+  const recentTips = recentShift ? recentShift.tips : 0;
+  const recentTipout = recentShift ? recentShift.tipOut : 0;
+  const recentHourly = recentShift && recentShift.hours > 0
+    ? recentShift.totalEarned / recentShift.hours
+    : 0;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Serving Shifts</Text>
-          <TouchableOpacity style={styles.logBtn} onPress={() => setShowForm(true)}>
-            <Text style={styles.logBtnText}>+ Log Shift</Text>
-          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.text }]}>
+            🐷 TipTally
+          </Text>
+          <Text style={[styles.bellIcon, { color: colors.textFaint }]}>🔔</Text>
         </View>
 
-        {/* Earnings by Day */}
-        {dayAverages.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Earnings by Day · tap a day to filter</Text>
-            {dayAverages.map((da) => (
-              <TouchableOpacity
-                key={da.day}
-                onPress={() => setSelectedDay(selectedDay === da.day ? null : da.day)}
-                activeOpacity={0.7}
-                style={styles.dayRow}
-              >
-                <View style={styles.dayHeader}>
-                  <Text style={[styles.dayName, selectedDay === da.day && { color: C.green }]}>
-                    {da.day}
-                  </Text>
-                  <Text style={styles.dayStats}>
-                    ${Math.round(da.avgEarned)} avg · {da.shiftCount} shift{da.shiftCount !== 1 ? 's' : ''}
-                  </Text>
-                </View>
-                <ProgressBar
-                  percent={(da.avgEarned / maxDayAvg) * 100}
-                  color={selectedDay === da.day ? C.green : C.purple}
-                  height={6}
-                />
-              </TouchableOpacity>
-            ))}
-            {bestDay && bestDayVsPrior && (
-              <Text style={styles.bestDayText}>
-                Best day: <Text style={{ color: C.green }}>{bestDay.day}</Text> averaging ${Math.round(bestDay.avgEarned)}/shift{'  '}
-                <Text style={{ color: bestDayVsPrior.positive ? C.coral : C.green }}>
-                  {bestDayVsPrior.positive ? '▼' : '▲'} ${bestDayVsPrior.diff} vs prior {bestDayVsPrior.count}
-                </Text>
-              </Text>
-            )}
-          </View>
-        )}
+        {/* Tonight's Earnings Hero */}
+        <View style={styles.heroSection}>
+          <Text style={[styles.heroAmount, { color: accent.primary }]}>
+            ${recentShift ? Math.round(recentShift.totalEarned) : 0}
+          </Text>
+          <Text style={[styles.heroLabel, { color: colors.textMuted }]}>
+            {recentShift ? recentShift.displayDate : 'Tonight'}
+          </Text>
+        </View>
 
-        {/* Selected Day Detail */}
-        {selectedDayData && (
-          <View style={styles.dayDetailSection}>
-            <Text style={styles.dayDetailTitle}>{selectedDayData.dayFull}</Text>
-            <Text style={styles.dayDetailSub}>
-              {selectedDayData.shiftCount} shift{selectedDayData.shiftCount !== 1 ? 's' : ''} logged
+        {/* Breakdown Card */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.breakdownRow}>
+            <Text style={[styles.breakdownLabel, { color: colors.textSoft }]}>Tips:</Text>
+            <Text style={[styles.breakdownValue, { color: colors.text }]}>
+              ${Math.round(recentTips)}
             </Text>
-            <View style={styles.divider} />
-            {selectedDayData.shifts.map(shift => (
-              <ShiftCard
-                key={shift.id}
-                shift={shift}
-                onEdit={() => router.push(`/shift/${shift.id}`)}
-                onDelete={() => deleteShift(shift.id)}
-              />
-            ))}
-            {/* Day stats */}
-            <View style={styles.statsGrid}>
-              <StatCard label="TOTAL EARNED" value={`$${Math.round(selectedDayData.totalEarned).toLocaleString()}`} accent={C.purple} />
-              <StatCard label="AVG / SHIFT" value={`$${Math.round(selectedDayData.avgEarned)}`} accent={C.gold} />
-              <StatCard label="BEST SHIFT" value={`$${Math.round(Math.max(...selectedDayData.shifts.map(s => s.totalEarned)))}`} accent={C.green} />
-              <StatCard label="AVG $/HR" value={`$${selectedDayData.avgHourly.toFixed(2)}`} accent={C.blue} />
-              <StatCard label="SHIFTS LOGGED" value={`${selectedDayData.shiftCount}`} accent={C.mint} />
-            </View>
           </View>
-        )}
-
-        {/* Weekly Shift Groups */}
-        {recentWeeks.map((week) => (
-          <TouchableOpacity
-            key={week.weekStart}
-            activeOpacity={0.8}
-            onPress={() => setExpandedWeek(expandedWeek === week.weekStart ? null : week.weekStart)}
-          >
-            <View style={styles.card}>
-              <View style={styles.weekHeader}>
-                <View>
-                  <Text style={styles.weekToggle}>
-                    <Text style={{ color: C.coral }}>
-                      {expandedWeek === week.weekStart ? '▼' : '►'}
-                    </Text>{' '}
-                    <Text style={{ color: C.blue }}>{week.label}</Text>
-                  </Text>
-                  <Text style={styles.weekSub}>
-                    {week.shifts.length} shift{week.shifts.length !== 1 ? 's' : ''} · {week.totalHours.toFixed(1)}hrs · ${Math.round(week.totalTips)} tips
-                  </Text>
-                </View>
-                <View style={styles.weekRight}>
-                  <Text style={styles.weekTotal}>${Math.round(week.totalEarned).toLocaleString()}</Text>
-                  <Text style={styles.weekAvg}>${Math.round(week.avgPerShift)}/shift avg</Text>
-                </View>
-              </View>
-
-              {expandedWeek === week.weekStart && (
-                <View style={styles.weekExpanded}>
-                  {week.shifts.map(shift => (
-                    <ShiftCard
-                      key={shift.id}
-                      shift={shift}
-                      onEdit={() => router.push(`/shift/${shift.id}`)}
-                      onDelete={() => deleteShift(shift.id)}
-                    />
-                  ))}
-                  {/* Week summary stats */}
-                  <View style={styles.weekStatsRow}>
-                    <View style={styles.weekStat}>
-                      <Text style={styles.weekStatLabel}>WEEK TOTAL</Text>
-                      <Text style={[styles.weekStatVal, { color: C.green }]}>
-                        ${Math.round(week.totalEarned).toLocaleString()}
-                      </Text>
-                    </View>
-                    <View style={styles.weekStat}>
-                      <Text style={styles.weekStatLabel}>AVG/SHIFT</Text>
-                      <Text style={[styles.weekStatVal, { color: C.purple }]}>
-                        ${Math.round(week.avgPerShift)}
-                      </Text>
-                    </View>
-                    <View style={styles.weekStat}>
-                      <Text style={styles.weekStatLabel}>HOURS</Text>
-                      <Text style={[styles.weekStatVal, { color: C.gold }]}>
-                        {week.totalHours.toFixed(1)}h
-                      </Text>
-                    </View>
-                    <View style={styles.weekStat}>
-                      <Text style={styles.weekStatLabel}>TIPS</Text>
-                      <Text style={[styles.weekStatVal, { color: C.blue }]}>
-                        ${Math.round(week.totalTips)}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
-
-        {/* Overall Stats */}
-        {count > 0 && (
-          <View style={styles.statsGrid}>
-            <StatCard label="TOTAL EARNED" value={`$${Math.round(totalEarned).toLocaleString()}`} accent={C.purple} />
-            <StatCard label="AVG / SHIFT" value={`$${Math.round(avgPerShift)}`} accent={C.gold} />
-            <StatCard label="BEST SHIFT" value={`$${Math.round(bestShift)}`} accent={C.green} />
-            <StatCard label="AVG $/HR" value={`$${avgHourly.toFixed(2)}`} accent={C.blue} />
-            <StatCard label="SHIFTS LOGGED" value={`${count}`} accent={C.mint} />
+          <View style={[styles.breakdownDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.breakdownRow}>
+            <Text style={[styles.breakdownLabel, { color: colors.textSoft }]}>Tipout:</Text>
+            <Text style={[styles.breakdownValue, { color: colors.text }]}>
+              -${Math.round(recentTipout)}
+            </Text>
           </View>
-        )}
+          <View style={[styles.breakdownDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.breakdownRow}>
+            <Text style={[styles.breakdownLabel, { color: colors.textSoft }]}>Hourly:</Text>
+            <Text style={[styles.breakdownValue, { color: colors.text }]}>
+              ${recentHourly.toFixed(2)}
+            </Text>
+          </View>
+        </View>
+
+        {/* This Week Card */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Week header row */}
+          <View style={styles.weekHeaderRow}>
+            <Text style={[styles.weekLabel, { color: colors.text }]}>This Week</Text>
+            <Text style={[styles.weekTotal, { color: accent.primary }]}>
+              ${weekTotal.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+            </Text>
+          </View>
+
+          {/* Bar chart */}
+          <View style={styles.barChart}>
+            {dayOrder.map((day) => {
+              const dayTotal = dayTotals[day] || 0;
+              return (
+                <View key={day} style={styles.barColumn}>
+                  {dayTotal > 0 && (
+                    <Text style={[styles.barValue, { color: colors.textMuted }]}>
+                      ${Math.round(dayTotal)}
+                    </Text>
+                  )}
+                  <View
+                    style={{
+                      width: 28,
+                      height: Math.max(4, (dayTotal / maxDay) * 120),
+                      backgroundColor: accent.primary,
+                      borderRadius: 4,
+                      marginVertical: 4,
+                    }}
+                  />
+                  <Text style={[styles.barDayLabel, { color: colors.textMuted }]}>{day}</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Week summary row */}
+          <View style={[styles.weekSummaryRow, { borderTopColor: colors.border }]}>
+            <Text style={[styles.weekSummaryText, { color: colors.textMuted }]}>
+              Sales: ${weekSales.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+            </Text>
+            <Text style={[styles.weekSummaryText, { color: colors.textMuted }]}>
+              Tipout: ${Math.round(weekTipout)}
+            </Text>
+          </View>
+        </View>
 
         {/* Empty state */}
-        {count === 0 && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No shifts logged yet</Text>
-            <Text style={styles.emptyText}>Tap "+ Log Shift" to record your first shift</Text>
+        {data.shifts.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyTitle, { color: colors.textSoft }]}>No shifts yet</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              Log your first shift from the Shifts tab
+            </Text>
           </View>
         )}
       </ScrollView>
-
-      <ShiftForm
-        visible={showForm}
-        onClose={() => setShowForm(false)}
-        onSave={addShift}
-        hourlyWage={data.settings.hourlyWage}
-      />
     </View>
   );
 }
 
-const mono = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
-  content: { padding: 20, paddingBottom: 40 },
+  container: {
+    flex: 1,
+  },
+  content: {
+    padding: 20,
+    paddingBottom: 40,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
     paddingTop: 8,
+    marginBottom: 24,
   },
   title: {
-    color: C.purple,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  logBtn: {
-    borderWidth: 1,
-    borderColor: C.purple + '40',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  logBtnText: {
-    color: C.purple,
-    fontSize: 12,
-    fontFamily: mono,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '800',
     letterSpacing: 0.5,
   },
-  card: {
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
+  bellIcon: {
+    fontSize: 20,
   },
-  cardTitle: {
-    color: C.textMuted,
-    fontSize: 11,
-    fontFamily: mono,
-    marginBottom: 16,
-  },
-  dayRow: {
-    marginBottom: 12,
-  },
-  dayHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  heroSection: {
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 24,
   },
-  dayName: {
-    color: C.blue,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  dayStats: {
-    color: C.textSoft,
-    fontSize: 11,
-    fontFamily: mono,
-  },
-  bestDayText: {
-    color: C.textMuted,
-    fontSize: 11,
-    fontFamily: mono,
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: C.border,
-  },
-  dayDetailSection: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dayDetailTitle: {
-    color: C.green,
-    fontSize: 28,
+  heroAmount: {
+    fontSize: 56,
     fontWeight: '800',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-  },
-  dayDetailSub: {
-    color: C.textMuted,
-    fontSize: 12,
     fontFamily: mono,
-    marginTop: 4,
-    marginBottom: 12,
+    letterSpacing: -1,
   },
-  divider: {
-    width: '100%',
-    height: 1,
-    backgroundColor: C.border,
+  heroLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  card: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 16,
     marginBottom: 16,
   },
-  weekHeader: {
+  breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    paddingVertical: 10,
   },
-  weekToggle: {
-    fontSize: 13,
-    fontWeight: '600',
+  breakdownLabel: {
+    fontSize: 14,
+    fontWeight: '500',
   },
-  weekSub: {
-    color: C.textMuted,
-    fontSize: 10,
+  breakdownValue: {
+    fontSize: 14,
+    fontWeight: '700',
     fontFamily: mono,
-    marginTop: 4,
   },
-  weekRight: {
-    alignItems: 'flex-end',
+  breakdownDivider: {
+    height: 1,
+  },
+  weekHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  weekLabel: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   weekTotal: {
-    color: C.green,
     fontSize: 22,
     fontWeight: '800',
     fontFamily: mono,
   },
-  weekAvg: {
-    color: C.textMuted,
-    fontSize: 10,
-    fontFamily: mono,
-    marginTop: 2,
-  },
-  weekExpanded: {
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: C.border,
-    paddingTop: 16,
-  },
-  weekStatsRow: {
+  barChart: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 12,
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    minHeight: 140,
   },
-  weekStat: {
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 12,
-    padding: 12,
-    flex: 1,
-    minWidth: 70,
-  },
-  weekStatLabel: {
-    color: C.textMuted,
-    fontSize: 8,
-    fontFamily: mono,
-    letterSpacing: 1,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  weekStatVal: {
-    fontSize: 16,
-    fontWeight: '800',
-    fontFamily: mono,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 8,
-  },
-  empty: {
+  barColumn: {
     alignItems: 'center',
-    paddingVertical: 60,
+    flex: 1,
+  },
+  barValue: {
+    fontSize: 9,
+    fontWeight: '600',
+    fontFamily: mono,
+  },
+  barDayLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  weekSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    paddingTop: 12,
+  },
+  weekSummaryText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: mono,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
   },
   emptyTitle: {
-    color: C.textSoft,
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
   },
   emptyText: {
-    color: C.textMuted,
     fontSize: 12,
     fontFamily: mono,
   },

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Platform, TouchableOpacity, Modal as RNModal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useData } from '../../context/DataContext';
 import { C } from '../../lib/constants';
@@ -14,10 +14,11 @@ import {
 import { ScheduledShift } from '../../lib/types';
 
 export default function ScheduleScreen() {
-  const { data, logScheduledShift, deleteScheduledShift, addScheduledShift } = useData();
+  const { data, logScheduledShift, unlogScheduledShift, deleteScheduledShift, addScheduledShift } = useData();
   const router = useRouter();
   const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
   const [logTarget, setLogTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const allShifts = data.shifts;
   const schedule = data.schedule;
@@ -139,7 +140,7 @@ export default function ScheduleScreen() {
           <StatCard
             label="Proj. This Week"
             value={`$${Math.round(projectedWeek).toLocaleString()}`}
-            sub="day-of-week estimate"
+            sub={thisWeekShifts.length > 0 ? `${thisWeekShifts.length} shift${thisWeekShifts.length !== 1 ? 's' : ''} remaining` : 'no shifts this week'}
             accent={C.purple}
           />
         </View>
@@ -246,6 +247,20 @@ export default function ScheduleScreen() {
                                   <Text style={styles.logShiftBtnText}>Log ✓</Text>
                                 </TouchableOpacity>
                               )}
+                              {s.logged && (
+                                <TouchableOpacity
+                                  style={styles.undoBtn}
+                                  onPress={() => unlogScheduledShift(s.id)}
+                                >
+                                  <Text style={styles.undoBtnText}>Undo</Text>
+                                </TouchableOpacity>
+                              )}
+                              <TouchableOpacity
+                                style={styles.deleteSchedBtn}
+                                onPress={() => setDeleteTarget(s.id)}
+                              >
+                                <Text style={styles.deleteSchedText}>×</Text>
+                              </TouchableOpacity>
                             </View>
                           </View>
                         </View>
@@ -287,9 +302,14 @@ export default function ScheduleScreen() {
                 <View style={styles.schedRight}>
                   <Text style={styles.schedEstAmount}>~${Math.round(dayAvg)}</Text>
                   <Text style={styles.schedEstSub}>{s.dayOfWeek} avg</Text>
-                  <TouchableOpacity style={styles.logShiftBtn} onPress={() => setLogTarget(s.id)}>
-                    <Text style={styles.logShiftBtnText}>Log ✓</Text>
-                  </TouchableOpacity>
+                  <View style={styles.schedActions}>
+                    <TouchableOpacity style={styles.logShiftBtn} onPress={() => setLogTarget(s.id)}>
+                      <Text style={styles.logShiftBtnText}>Log ✓</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.deleteSchedBtn} onPress={() => setDeleteTarget(s.id)}>
+                      <Text style={styles.deleteSchedText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             </View>
@@ -310,17 +330,38 @@ export default function ScheduleScreen() {
         <ShiftForm
           visible={true}
           onClose={() => setLogTarget(null)}
-          onSave={(date, hours, totalEarned) => {
-            logScheduledShift(logTargetEntry.id, hours, totalEarned);
+          onSave={(date, hours, tips, tipOut) => {
+            logScheduledShift(logTargetEntry.id, hours, tips, tipOut);
             setLogTarget(null);
           }}
           initialDate={logTargetEntry.date}
           initialHours={String(logTargetEntry.estimatedHours)}
           title="LOG SCHEDULED SHIFT"
           buttonLabel="LOG SHIFT"
-          hourlyWage={data.settings.hourlyWage}
+          hourlyWage={data.settings.roleWages?.[logTargetEntry.role] ?? data.settings.hourlyWage}
         />
       )}
+
+      {/* Delete scheduled shift confirmation */}
+      {deleteTarget && (() => {
+        const entry = schedule.find(s => s.id === deleteTarget);
+        return (
+          <RNModal visible={true} transparent animationType="fade">
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalBox}>
+                <Text style={styles.modalTitle}>Delete Shift</Text>
+                <Text style={styles.modalMsg}>
+                  Remove {entry?.displayDate} ({entry?.role}) from your schedule?
+                </Text>
+                <View style={styles.modalButtons}>
+                  <Button onPress={() => setDeleteTarget(null)} color={C.textMuted}>CANCEL</Button>
+                  <Button onPress={() => { deleteScheduledShift(deleteTarget); setDeleteTarget(null); }} color={C.danger} filled>DELETE</Button>
+                </View>
+              </View>
+            </View>
+          </RNModal>
+        );
+      })()}
     </View>
   );
 }
@@ -577,6 +618,75 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: mono,
     fontWeight: '700',
+  },
+  schedActions: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 4,
+  },
+  deleteSchedBtn: {
+    borderWidth: 1,
+    borderColor: C.danger + '40',
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: C.dangerBg,
+  },
+  deleteSchedText: {
+    color: C.danger,
+    fontSize: 14,
+    fontFamily: mono,
+    fontWeight: '700',
+  },
+  undoBtn: {
+    borderWidth: 1,
+    borderColor: C.gold + '40',
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: C.gold + '10',
+    marginTop: 4,
+  },
+  undoBtnText: {
+    color: C.gold,
+    fontSize: 10,
+    fontFamily: mono,
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: '#000000cc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalBox: {
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    color: C.text,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalMsg: {
+    color: C.textMuted,
+    fontSize: 13,
+    fontFamily: mono,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
   },
   empty: {
     alignItems: 'center',

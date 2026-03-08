@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Platform,
-  ActivityIndicator, Image, TouchableOpacity, Alert,
+  ActivityIndicator, Image, TouchableOpacity,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -15,28 +15,25 @@ import Button from '../../components/ui/Button';
 type Stage = 'pick' | 'scanning' | 'review' | 'error';
 
 export default function ScanScheduleScreen() {
-  const { data, addScheduledShift } = useData();
+  const { data, addScheduledShifts } = useData();
   const router = useRouter();
   const settings = data.settings;
 
   const [stage, setStage] = useState<Stage>('pick');
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageUris, setImageUris] = useState<string[]>([]);
   const [parsedShifts, setParsedShifts] = useState<ParsedShift[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pickError, setPickError] = useState('');
+  const [scanProgress, setScanProgress] = useState({ current: 0, total: 0 });
 
   const pickImage = async (useCamera: boolean) => {
+    setPickError('');
+
     // Check API key first
     if (!settings.geminiApiKey) {
-      Alert.alert(
-        'API Key Required',
-        'Set up your Gemini API key in Settings to use the scanner.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Go to Settings', onPress: () => router.replace('/(tabs)/settings') },
-        ],
-      );
+      setPickError('API key required. Add your Gemini API key in Settings.');
       return;
     }
 
@@ -44,13 +41,13 @@ export default function ScanScheduleScreen() {
     if (useCamera) {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission Required', 'Camera access is needed to scan your schedule.');
+        setPickError('Camera permission is required to scan your schedule.');
         return;
       }
     } else {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission Required', 'Photo library access is needed to scan your schedule.');
+        setPickError('Photo library permission is required to scan your schedule.');
         return;
       }
     }
@@ -65,22 +62,37 @@ export default function ScanScheduleScreen() {
           mediaTypes: ['images'],
           quality: 0.7,
           base64: true,
+          allowsMultipleSelection: true,
+          selectionLimit: 10,
         });
 
-    if (result.canceled || !result.assets?.[0]) return;
+    if (result.canceled || !result.assets?.length) return;
 
-    const asset = result.assets[0];
-    setImageUri(asset.uri);
+    const assets = result.assets;
+    setImageUris(assets.map(a => a.uri));
     setStage('scanning');
+    setScanProgress({ current: 0, total: assets.length });
 
     try {
-      const shifts = await parseScheduleImage(
-        asset.base64!,
-        settings.roles,
-        settings.geminiApiKey!,
-      );
-      setParsedShifts(shifts);
-      setSelected(new Set(shifts.map((_, i) => i)));
+      const allShifts: ParsedShift[] = [];
+      for (let i = 0; i < assets.length; i++) {
+        setScanProgress({ current: i + 1, total: assets.length });
+        const shifts = await parseScheduleImage(
+          assets[i].base64!,
+          settings.roles,
+          settings.geminiApiKey!,
+        );
+        for (const shift of shifts) {
+          const isDup = allShifts.some(
+            s => s.date === shift.date && s.startTime === shift.startTime,
+          );
+          if (!isDup) allShifts.push(shift);
+        }
+      }
+      if (allShifts.length === 0) throw new Error('NO_SHIFTS_FOUND');
+      allShifts.sort((a, b) => a.date.localeCompare(b.date));
+      setParsedShifts(allShifts);
+      setSelected(new Set(allShifts.map((_, i) => i)));
       setStage('review');
     } catch (err) {
       setErrorMsg(getErrorMessage(err));
@@ -112,14 +124,14 @@ export default function ScanScheduleScreen() {
   const handleConfirm = async () => {
     setSaving(true);
     const toAdd = parsedShifts.filter((_, i) => selected.has(i));
-    for (const shift of toAdd) {
-      addScheduledShift(
-        shift.date,
-        shift.startTime,
-        shift.role,
-        shift.estimatedHours,
-      );
-    }
+    addScheduledShifts(
+      toAdd.map(shift => ({
+        date: shift.date,
+        startTime: shift.startTime,
+        role: shift.role,
+        estimatedHours: shift.estimatedHours,
+      })),
+    );
     setSaving(false);
     router.back();
   };
@@ -134,8 +146,18 @@ export default function ScanScheduleScreen() {
           <Text style={styles.scanIcon}>📸</Text>
           <Text style={styles.pickTitle}>Scan Your Schedule</Text>
           <Text style={styles.pickSub}>
-            Take a photo of your posted schedule or pick a screenshot
+            Take a photo or select multiple screenshots at once
           </Text>
+          {pickError ? (
+            <View style={styles.pickErrorBox}>
+              <Text style={styles.pickErrorText}>{pickError}</Text>
+              {!settings.geminiApiKey && (
+                <TouchableOpacity onPress={() => router.replace('/(tabs)/settings')}>
+                  <Text style={styles.pickErrorLink}>Go to Settings</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : null}
           <View style={styles.pickButtons}>
             <TouchableOpacity
               style={styles.pickBtn}
@@ -164,12 +186,16 @@ export default function ScanScheduleScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.centered}>
-          {imageUri && (
-            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+          {imageUris.length > 0 && (
+            <Image source={{ uri: imageUris[Math.max(0, scanProgress.current - 1)] }} style={styles.previewImage} />
           )}
           <ActivityIndicator size="large" color={C.purple} style={{ marginTop: 20 }} />
           <Text style={styles.scanningText}>SCANNING SCHEDULE...</Text>
-          <Text style={styles.scanSubtext}>AI is reading your shifts</Text>
+          <Text style={styles.scanSubtext}>
+            {scanProgress.total > 1
+              ? `Scanning photo ${scanProgress.current} of ${scanProgress.total}`
+              : 'AI is reading your shifts'}
+          </Text>
         </View>
       </View>
     );
@@ -212,8 +238,12 @@ export default function ScanScheduleScreen() {
           </Text>
         </View>
 
-        {imageUri && (
-          <Image source={{ uri: imageUri }} style={styles.reviewThumb} />
+        {imageUris.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbRow}>
+            {imageUris.map((uri, i) => (
+              <Image key={i} source={{ uri }} style={[styles.reviewThumb, imageUris.length > 1 && styles.reviewThumbMulti]} />
+            ))}
+          </ScrollView>
         )}
 
         {parsedShifts.map((shift, i) => (
@@ -274,6 +304,32 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 20,
+  },
+  pickErrorBox: {
+    backgroundColor: C.danger + '18',
+    borderWidth: 1,
+    borderColor: C.danger + '40',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    maxWidth: 300,
+  },
+  pickErrorText: {
+    color: C.danger,
+    fontSize: 12,
+    fontFamily: mono,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  pickErrorLink: {
+    color: C.blue,
+    fontSize: 12,
+    fontFamily: mono,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   pickButtons: {
     flexDirection: 'row',
@@ -354,12 +410,20 @@ const styles = StyleSheet.create({
     fontFamily: mono,
     marginTop: 4,
   },
+  thumbRow: {
+    marginBottom: 16,
+  },
   reviewThumb: {
     width: '100%',
     height: 120,
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 0,
     opacity: 0.5,
+  },
+  reviewThumbMulti: {
+    width: 140,
+    height: 100,
+    marginRight: 8,
   },
 
   // Bottom bar

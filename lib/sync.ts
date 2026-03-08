@@ -49,6 +49,7 @@ export async function pullShifts(lastSyncedAt: string | null): Promise<Shift[]> 
     hours: row.hours,
     totalEarned: row.total_earned,
     tips: row.tips,
+    tipOut: row.tip_out || 0,
     hourlyWage: row.hourly_wage,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
