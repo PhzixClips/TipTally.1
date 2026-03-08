@@ -1,4 +1,7 @@
 import { Shift } from './types';
+import { writeAsStringAsync } from 'expo-file-system';
+import { Paths } from 'expo-file-system';
+import { shareAsync } from 'expo-sharing';
 
 export function shiftsToCSV(shifts: Shift[]): string {
   const header = 'Date,Day,Role,Hours,HourlyWage,Tips,CashTips,CreditTips,TipOut,TotalEarned,Notes,Tags';
@@ -27,11 +30,9 @@ export function shiftsToCSV(shifts: Shift[]): string {
 }
 
 export async function exportCSV(shifts: Shift[]): Promise<void> {
-  const FileSystem = require('expo-file-system');
-  const Sharing = require('expo-sharing');
   const csv = shiftsToCSV(shifts);
   const fileName = `tiptally-export-${new Date().toISOString().slice(0, 10)}.csv`;
-  const filePath = `${FileSystem.cacheDirectory}${fileName}`;
-  await FileSystem.writeAsStringAsync(filePath, csv, { encoding: FileSystem.EncodingType.UTF8 });
-  await Sharing.shareAsync(filePath, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+  const filePath = Paths.cache.uri + '/' + fileName;
+  await writeAsStringAsync(filePath, csv);
+  await shareAsync(filePath, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
 }
