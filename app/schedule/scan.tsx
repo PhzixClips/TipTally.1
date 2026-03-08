@@ -15,7 +15,7 @@ import Button from '../../components/ui/Button';
 type Stage = 'pick' | 'scanning' | 'review' | 'error';
 
 export default function ScanScheduleScreen() {
-  const { data, addScheduledShifts } = useData();
+  const { data, addScheduledShifts, updateSettings } = useData();
   const router = useRouter();
   const settings = data.settings;
 
@@ -124,6 +124,14 @@ export default function ScanScheduleScreen() {
   const handleConfirm = async () => {
     setSaving(true);
     const toAdd = parsedShifts.filter((_, i) => selected.has(i));
+    // Auto-add any new roles discovered from the scan
+    const newRoles = toAdd
+      .map(s => s.role)
+      .filter(r => r && r !== 'Unknown' && !settings.roles.includes(r));
+    const uniqueNewRoles = [...new Set(newRoles)];
+    if (uniqueNewRoles.length > 0) {
+      updateSettings({ roles: [...settings.roles, ...uniqueNewRoles] });
+    }
     addScheduledShifts(
       toAdd.map(shift => ({
         date: shift.date,
