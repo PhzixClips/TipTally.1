@@ -1,139 +1,147 @@
 import React from 'react';
-import Svg, { Path, Circle, Rect, Line, G } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
 
 interface IconProps {
   color: string;
   size?: number;
 }
 
-// Piggy bank icon - Home tab
-export function PiggyBankIcon({ color, size = 24 }: IconProps) {
+// Piggy bank - Home tab
+// Side-profile: round body, two pointy ears top-left, coin dropping in top, curly tail right, two legs, snout left
+export function PiggyBankIcon({ color, size = 26 }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {/* Body */}
+    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+      {/* Main round body */}
       <Path
-        d="M19 10c0-3.87-3.37-7-7.5-7S4 6.13 4 10c0 2.38 1.19 4.47 3 5.74V17a1 1 0 001 1h1.5l.5 2h2l.5-2H14a1 1 0 001-1v-1.26c1.81-1.27 3-3.36 3-5.74h1"
+        d="M10 28a14 14 0 0128 0a14 14 0 01-28 0z"
         stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeWidth={3}
+        fill="none"
       />
-      {/* Ear */}
-      <Path
-        d="M6.5 6.5L4.5 4"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-      />
-      {/* Coin slot */}
-      <Circle cx="11.5" cy="6" r="1.5" stroke={color} strokeWidth={1.5} />
+      {/* Left ear - triangle */}
+      <Path d="M15 15l-5-7 6 3z" stroke={color} strokeWidth={2.5} strokeLinejoin="round" fill="none" />
+      {/* Right ear - triangle */}
+      <Path d="M22 14l1-7 4 5z" stroke={color} strokeWidth={2.5} strokeLinejoin="round" fill="none" />
+      {/* Coin on top */}
+      <Circle cx="24" cy="9" r="3.5" fill={color} />
+      {/* Snout on left */}
+      <Path d="M9 26a3.5 3.5 0 010 5" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
       {/* Eye */}
-      <Circle cx="14" cy="10" r="0.8" fill={color} />
-      {/* Tail */}
-      <Path
-        d="M19 10c.5-.5 1.5-.5 2 .5"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-      />
+      <Circle cx="17" cy="25" r="1.5" fill={color} />
+      {/* Curly tail on right */}
+      <Path d="M38 25c3-1 5 1 4 4s-3 2-3 1" stroke={color} strokeWidth={2.5} strokeLinecap="round" fill="none" />
       {/* Front leg */}
-      <Line x1="8" y1="17" x2="8" y2="19.5" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <Line x1="18" y1="40" x2="18" y2="45" stroke={color} strokeWidth={3} strokeLinecap="round" />
       {/* Back leg */}
-      <Line x1="14" y1="17" x2="14" y2="19.5" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      <Line x1="30" y1="40" x2="30" y2="45" stroke={color} strokeWidth={3} strokeLinecap="round" />
     </Svg>
   );
 }
 
-// Clock icon - Shifts tab
-export function ClockIcon({ color, size = 24 }: IconProps) {
+// Clock - Shifts tab
+// Circle, 4 tick marks at 12/3/6/9, two hands forming V shape (pointing to ~10 and ~2)
+export function ClockIcon({ color, size = 26 }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="9.5" stroke={color} strokeWidth={2} />
-      {/* Hour marks */}
-      <Line x1="12" y1="3.5" x2="12" y2="5" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
-      <Line x1="12" y1="19" x2="12" y2="20.5" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
-      <Line x1="3.5" y1="12" x2="5" y2="12" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
-      <Line x1="19" y1="12" x2="20.5" y2="12" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
-      {/* Hour hand */}
-      <Line x1="12" y1="12" x2="12" y2="7.5" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
-      {/* Minute hand */}
-      <Line x1="12" y1="12" x2="15.5" y2="8" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+      {/* Outer circle */}
+      <Circle cx="24" cy="24" r="20" stroke={color} strokeWidth={3} />
+      {/* 12 o'clock tick */}
+      <Line x1="24" y1="6" x2="24" y2="10" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+      {/* 3 o'clock tick */}
+      <Line x1="42" y1="24" x2="38" y2="24" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+      {/* 6 o'clock tick */}
+      <Line x1="24" y1="42" x2="24" y2="38" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+      {/* 9 o'clock tick */}
+      <Line x1="6" y1="24" x2="10" y2="24" stroke={color} strokeWidth={2.5} strokeLinecap="round" />
+      {/* Left hand - pointing to ~10 */}
+      <Line x1="24" y1="24" x2="16" y2="13" stroke={color} strokeWidth={3.5} strokeLinecap="round" />
+      {/* Right hand - pointing to ~2 */}
+      <Line x1="24" y1="24" x2="32" y2="13" stroke={color} strokeWidth={3.5} strokeLinecap="round" />
       {/* Center dot */}
-      <Circle cx="12" cy="12" r="1" fill={color} />
+      <Circle cx="24" cy="24" r="2" fill={color} />
     </Svg>
   );
 }
 
-// Calendar icon - Schedule tab
-export function CalendarIcon({ color, size = 24 }: IconProps) {
+// Calendar - Schedule tab
+// Rounded rect body, two binding posts, header divider, 4x3 grid of filled squares
+export function CalendarIcon({ color, size = 26 }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
       {/* Calendar body */}
-      <Rect x="3" y="5" width="18" height="16" rx="3" stroke={color} strokeWidth={2} />
-      {/* Top bar */}
-      <Line x1="3" y1="10" x2="21" y2="10" stroke={color} strokeWidth={2} />
-      {/* Binding rings */}
-      <Line x1="8" y1="3" x2="8" y2="7" stroke={color} strokeWidth={2} strokeLinecap="round" />
-      <Line x1="16" y1="3" x2="16" y2="7" stroke={color} strokeWidth={2} strokeLinecap="round" />
-      {/* Date dots - row 1 */}
-      <Rect x="6" y="12.5" width="2.5" height="2" rx="0.5" fill={color} />
-      <Rect x="10.5" y="12.5" width="2.5" height="2" rx="0.5" fill={color} />
-      <Rect x="15" y="12.5" width="2.5" height="2" rx="0.5" fill={color} />
-      {/* Date dots - row 2 */}
-      <Rect x="6" y="16" width="2.5" height="2" rx="0.5" fill={color} />
-      <Rect x="10.5" y="16" width="2.5" height="2" rx="0.5" fill={color} />
-      <Rect x="15" y="16" width="2.5" height="2" rx="0.5" fill={color} />
+      <Rect x="4" y="8" width="40" height="36" rx="5" stroke={color} strokeWidth={3} />
+      {/* Header divider */}
+      <Line x1="4" y1="18" x2="44" y2="18" stroke={color} strokeWidth={3} />
+      {/* Left binding post */}
+      <Line x1="15" y1="4" x2="15" y2="12" stroke={color} strokeWidth={3.5} strokeLinecap="round" />
+      {/* Right binding post */}
+      <Line x1="33" y1="4" x2="33" y2="12" stroke={color} strokeWidth={3.5} strokeLinecap="round" />
+      {/* Row 1 */}
+      <Rect x="9" y="22" width="4.5" height="3.5" rx="0.8" fill={color} />
+      <Rect x="17" y="22" width="4.5" height="3.5" rx="0.8" fill={color} />
+      <Rect x="25" y="22" width="4.5" height="3.5" rx="0.8" fill={color} />
+      <Rect x="33" y="22" width="4.5" height="3.5" rx="0.8" fill={color} />
+      {/* Row 2 */}
+      <Rect x="9" y="29" width="4.5" height="3.5" rx="0.8" fill={color} />
+      <Rect x="17" y="29" width="4.5" height="3.5" rx="0.8" fill={color} />
+      <Rect x="25" y="29" width="4.5" height="3.5" rx="0.8" fill={color} />
+      <Rect x="33" y="29" width="4.5" height="3.5" rx="0.8" fill={color} />
+      {/* Row 3 */}
+      <Rect x="9" y="36" width="4.5" height="3.5" rx="0.8" fill={color} />
+      <Rect x="17" y="36" width="4.5" height="3.5" rx="0.8" fill={color} />
+      <Rect x="25" y="36" width="4.5" height="3.5" rx="0.8" fill={color} />
+      <Rect x="33" y="36" width="4.5" height="3.5" rx="0.8" fill={color} />
     </Svg>
   );
 }
 
-// Bar chart with arrow icon - Stats tab
-export function StatsIcon({ color, size = 24 }: IconProps) {
+// Stats - Bar chart with curved growth arrow
+// 3 bars increasing height L to R, smooth curved arrow sweeping up to the right
+export function StatsIcon({ color, size = 26 }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {/* Bar 1 (short) */}
-      <Rect x="4" y="14" width="4" height="7" rx="1.2" stroke={color} strokeWidth={1.8} />
-      {/* Bar 2 (medium) */}
-      <Rect x="10" y="10" width="4" height="11" rx="1.2" stroke={color} strokeWidth={1.8} />
-      {/* Bar 3 (tall) */}
-      <Rect x="16" y="6" width="4" height="15" rx="1.2" stroke={color} strokeWidth={1.8} />
-      {/* Growth arrow */}
+    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+      {/* Bar 1 - short */}
+      <Rect x="6" y="30" width="9" height="14" rx="1.5" stroke={color} strokeWidth={2.8} />
+      {/* Bar 2 - medium */}
+      <Rect x="19.5" y="22" width="9" height="22" rx="1.5" stroke={color} strokeWidth={2.8} />
+      {/* Bar 3 - tall */}
+      <Rect x="33" y="14" width="9" height="30" rx="1.5" stroke={color} strokeWidth={2.8} />
+      {/* Growth arrow - smooth curve */}
       <Path
-        d="M5 13C8 10 12 7 19 3"
+        d="M8 28C16 20 24 12 40 6"
         stroke={color}
-        strokeWidth={2}
+        strokeWidth={3}
         strokeLinecap="round"
-        strokeLinejoin="round"
+        fill="none"
       />
+      {/* Arrow head */}
       <Path
-        d="M15 3h4v4"
+        d="M35 4l6 2-2 6"
         stroke={color}
-        strokeWidth={2}
+        strokeWidth={3}
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       />
     </Svg>
   );
 }
 
-// Gear icon - Settings tab
-export function GearIcon({ color, size = 24 }: IconProps) {
+// Gear/Cog - Settings tab
+// 8 rounded bumpy teeth around the edge, inner donut circle, center hole
+export function GearIcon({ color, size = 26 }: IconProps) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+      {/* Gear body - 8 bumpy teeth */}
       <Path
-        d="M12 15a3 3 0 100-6 3 3 0 000 6z"
+        d="M24 4c1.8 0 3.3 1 3.8 2.5l.6 2c1 .4 2 1 2.8 1.6l2-.5c1.6-.4 3.3.4 4 1.8.7 1.5.3 3.2-.9 4.2l-1.4 1.2c.2.9.3 1.8.3 2.7 0 .9-.1 1.8-.3 2.7l1.4 1.2c1.2 1 1.6 2.7.9 4.2-.7 1.4-2.4 2.2-4 1.8l-2-.5c-.8.6-1.8 1.2-2.8 1.6l-.6 2c-.5 1.5-2 2.5-3.8 2.5s-3.3-1-3.8-2.5l-.6-2c-1-.4-2-1-2.8-1.6l-2 .5c-1.6.4-3.3-.4-4-1.8-.7-1.5-.3-3.2.9-4.2l1.4-1.2c-.2-.9-.3-1.8-.3-2.7 0-.9.1-1.8.3-2.7l-1.4-1.2c-1.2-1-1.6-2.7-.9-4.2.7-1.4 2.4-2.2 4-1.8l2 .5c.8-.6 1.8-1.2 2.8-1.6l.6-2C20.7 5 22.2 4 24 4z"
         stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
+        strokeWidth={3}
         strokeLinejoin="round"
+        fill="none"
       />
-      <Path
-        d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      {/* Inner circle - donut */}
+      <Circle cx="24" cy="24" r="6" stroke={color} strokeWidth={3} />
     </Svg>
   );
 }
