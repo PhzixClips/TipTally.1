@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppData } from './types';
 import { STORAGE_KEY, DEFAULT_APP_DATA } from './constants';
+import { generateSeedData } from './seedData';
 
 function migrateV1toV2(data: any): any {
   const shifts = (data.shifts || []).map((s: any) => ({
@@ -41,7 +42,10 @@ export const Storage = {
         };
       }
     } catch {}
-    return { ...DEFAULT_APP_DATA, updatedAt: new Date().toISOString() };
+    // Load seed data on first launch so the app isn't empty
+    const seeded = generateSeedData();
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...seeded, updatedAt: new Date().toISOString() }));
+    return seeded;
   },
 
   set: async (data: AppData): Promise<void> => {
