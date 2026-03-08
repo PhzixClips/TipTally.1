@@ -119,7 +119,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       });
     }
     if (newEntries.length > 0) {
-      save({ ...data, schedule: [...data.schedule, ...newEntries] });
+      // Auto-add any new roles found in the shifts
+      const currentRoles = data.settings.roles;
+      const newRoles = [...new Set(
+        newEntries
+          .map(e => e.role)
+          .filter(r => r && r !== 'Unknown' && !currentRoles.includes(r))
+      )];
+      const updatedSettings = newRoles.length > 0
+        ? { ...data.settings, roles: [...currentRoles, ...newRoles] }
+        : data.settings;
+      save({ ...data, settings: updatedSettings, schedule: [...data.schedule, ...newEntries] });
     }
   }, [data, save]);
 
