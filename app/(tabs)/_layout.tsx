@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useTheme } from '../../context/ThemeContext';
+import { PiggyBankIcon, ClockIcon, CalendarIcon, StatsIcon, GearIcon } from '../../components/icons/TabIcons';
 
 export default function TabLayout() {
   const { colors, accent } = useTheme();
@@ -30,45 +30,35 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'house.fill', android: 'home', web: 'home' }} tintColor={color} size={24} />
-          ),
+          tabBarIcon: ({ color }) => <PiggyBankIcon color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="shifts"
         options={{
           title: 'Shifts',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'list.bullet.rectangle.fill', android: 'receipt_long', web: 'receipt_long' }} tintColor={color} size={24} />
-          ),
+          tabBarIcon: ({ color }) => <ClockIcon color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="schedule"
         options={{
           title: 'Schedule',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'calendar', android: 'calendar_today', web: 'calendar_today' }} tintColor={color} size={24} />
-          ),
+          tabBarIcon: ({ color }) => <CalendarIcon color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: 'Stats',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'chart.bar.fill', android: 'bar_chart', web: 'bar_chart' }} tintColor={color} size={24} />
-          ),
+          tabBarIcon: ({ color }) => <StatsIcon color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => (
-            <SymbolView name={{ ios: 'gearshape.fill', android: 'settings', web: 'settings' }} tintColor={color} size={24} />
-          ),
+          tabBarIcon: ({ color }) => <GearIcon color={color} size={24} />,
         }}
       />
       {/* Hide tax tab from the tab bar */}
