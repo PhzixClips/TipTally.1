@@ -15,7 +15,7 @@ import Button from '../../components/ui/Button';
 type Stage = 'pick' | 'scanning' | 'review' | 'error';
 
 export default function ScanScheduleScreen() {
-  const { data, addScheduledShift } = useData();
+  const { data, addScheduledShifts } = useData();
   const router = useRouter();
   const settings = data.settings;
 
@@ -108,14 +108,14 @@ export default function ScanScheduleScreen() {
   const handleConfirm = async () => {
     setSaving(true);
     const toAdd = parsedShifts.filter((_, i) => selected.has(i));
-    for (const shift of toAdd) {
-      addScheduledShift(
-        shift.date,
-        shift.startTime,
-        shift.role,
-        shift.estimatedHours,
-      );
-    }
+    addScheduledShifts(
+      toAdd.map(shift => ({
+        date: shift.date,
+        startTime: shift.startTime,
+        role: shift.role,
+        estimatedHours: shift.estimatedHours,
+      })),
+    );
     setSaving(false);
     router.back();
   };

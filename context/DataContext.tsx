@@ -11,6 +11,7 @@ interface DataContextType {
   updateShift: (id: string, date: string, hours: number, totalEarned: number) => void;
   deleteShift: (id: string) => void;
   addScheduledShift: (date: string, startTime: string, role: string, estimatedHours: number) => void;
+  addScheduledShifts: (shifts: { date: string; startTime: string; role: string; estimatedHours: number }[]) => void;
   updateScheduledShift: (id: string, updates: Partial<ScheduledShift>) => void;
   deleteScheduledShift: (id: string) => void;
   logScheduledShift: (scheduleId: string, hours: number, totalEarned: number) => void;
@@ -91,6 +92,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     save({ ...data, schedule: [...data.schedule, entry] });
   }, [data, save]);
 
+  const addScheduledShifts = useCallback((shifts: { date: string; startTime: string; role: string; estimatedHours: number }[]) => {
+    const existing = data.schedule;
+    const newEntries: ScheduledShift[] = [];
+    for (const shift of shifts) {
+      // Skip if a shift with the same date and startTime already exists in DB or in this batch
+      const isDupInDB = existing.some(e => e.date === shift.date && e.startTime === shift.startTime);
+      const isDupInBatch = newEntries.some(e => e.date === shift.date && e.startTime === shift.startTime);
+      if (isDupInDB || isDupInBatch) continue;
+      newEntries.push({
+        id: generateId(),
+        date: shift.date,
+        displayDate: formatDisplayDate(shift.date),
+        dayOfWeek: getDayOfWeek(shift.date),
+        startTime: shift.startTime,
+        role: shift.role,
+        estimatedHours: shift.estimatedHours,
+        logged: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    if (newEntries.length > 0) {
+      save({ ...data, schedule: [...data.schedule, ...newEntries] });
+    }
+  }, [data, save]);
+
   const updateScheduledShift = useCallback((id: string, updates: Partial<ScheduledShift>) => {
     save({
       ...data,
@@ -149,7 +176,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     <DataContext.Provider value={{
       data, loading,
       addShift, updateShift, deleteShift,
-      addScheduledShift, updateScheduledShift, deleteScheduledShift, logScheduledShift,
+      addScheduledShift, addScheduledShifts, updateScheduledShift, deleteScheduledShift, logScheduledShift,
       updateSettings, clearAllData,
     }}>
       {children}
