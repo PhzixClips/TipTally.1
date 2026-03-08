@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Platform, Switch, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Platform, Switch, TouchableOpacity, Modal, TextInput } from 'react-native';
 import { useData } from '../../context/DataContext';
 import { C } from '../../lib/constants';
 import Button from '../../components/ui/Button';
@@ -13,6 +13,7 @@ export default function SettingsScreen() {
   const [newRole, setNewRole] = useState('');
   const [apiKey, setApiKey] = useState(settings.geminiApiKey || '');
   const [apiKeySaved, setApiKeySaved] = useState(!!settings.geminiApiKey);
+  const [clearConfirmStep, setClearConfirmStep] = useState<0 | 1 | 2>(0);
 
   const saveApiKey = () => {
     const trimmed = apiKey.trim();
@@ -51,24 +52,15 @@ export default function SettingsScreen() {
     updateSettings({ roles: settings.roles.filter(r => r !== role) });
   };
 
-  const handleClear = () => {
-    Alert.alert(
-      'Clear All Data',
-      'This will permanently delete all your shifts and schedule. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Everything',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Are you sure?', 'Last chance - all data will be lost.', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Yes, Delete', style: 'destructive', onPress: clearAllData },
-            ]);
-          },
-        },
-      ]
-    );
+  const handleClear = () => setClearConfirmStep(1);
+
+  const confirmClear = async () => {
+    if (clearConfirmStep === 1) {
+      setClearConfirmStep(2);
+    } else {
+      await clearAllData();
+      setClearConfirmStep(0);
+    }
   };
 
   const REMINDER_OPTIONS = [
@@ -276,6 +268,43 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={styles.version}>TipTally v1.0.0</Text>
+
+      {/* Clear Data Confirmation Modal */}
+      <Modal visible={clearConfirmStep > 0} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>
+              {clearConfirmStep === 1 ? 'Clear All Data' : 'Are you sure?'}
+            </Text>
+            <Text style={styles.modalMsg}>
+              {clearConfirmStep === 1
+                ? 'This will permanently delete all your shifts and schedule. This cannot be undone.'
+                : 'Last chance — all data will be lost forever.'}
+            </Text>
+            <View style={styles.modalInfo}>
+              <Text style={styles.modalInfoText}>
+                {data.shifts.length} shifts & {data.schedule.length} scheduled will be deleted
+              </Text>
+            </View>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setClearConfirmStep(0)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalDeleteBtn}
+                onPress={confirmClear}
+              >
+                <Text style={styles.modalDeleteText}>
+                  {clearConfirmStep === 1 ? 'Delete Everything' : 'Yes, Delete All'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -429,5 +458,75 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 32,
     letterSpacing: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalBox: {
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 360,
+  },
+  modalTitle: {
+    color: C.text,
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  modalMsg: {
+    color: C.textMuted,
+    fontSize: 13,
+    fontFamily: mono,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  modalInfo: {
+    backgroundColor: C.danger + '15',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 20,
+  },
+  modalInfoText: {
+    color: C.danger,
+    fontSize: 12,
+    fontFamily: mono,
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: C.textMuted,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalDeleteBtn: {
+    flex: 1,
+    backgroundColor: C.danger,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalDeleteText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
