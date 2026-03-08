@@ -49,6 +49,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="tax"
+        options={{
+          title: 'Tax',
+          tabBarIcon: ({ color }) => (
+            <SymbolView name={{ ios: 'percent', android: 'percent', web: 'percent' }} tintColor={color} size={24} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

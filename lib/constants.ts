@@ -42,6 +42,10 @@ export const C = {
   warning: '#FFD166',
 };
 
+export const DEFAULT_TAGS = [
+  'Patio', 'Bar', 'Double', 'Event', 'Slow', 'Busy', 'Training', 'Holiday',
+];
+
 export const DEFAULT_SETTINGS: Settings = {
   hourlyWage: 12.15,
   defaultShiftHours: 6,
@@ -54,12 +58,31 @@ export const DEFAULT_SETTINGS: Settings = {
   cloudSyncEnabled: false,
   lastSyncedAt: null,
   geminiApiKey: null,
+  mileageRate: 0.70,
 };
 
 export const DEFAULT_APP_DATA: AppData = {
   shifts: [],
   schedule: [],
+  jobs: [],
+  expenses: [],
+  goals: [],
+  clients: [],
   settings: DEFAULT_SETTINGS,
-  version: 1,
+  version: 2,
   updatedAt: new Date().toISOString(),
+};
+
+// Premium feature limits for free tier
+export const FREE_LIMITS = {
+  maxJobs: 1,
+  maxRoles: 3,
+  maxTags: 3,
+  maxTipOutRecipients: 1,
+  aiScansPerWeek: 2,
+};
+
+export const PREMIUM_PRICE = {
+  monthly: 4.99,
+  annual: 29.99,
 };

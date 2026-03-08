@@ -241,7 +241,12 @@ export default function ShiftsScreen() {
       <ShiftForm
         visible={showForm}
         onClose={() => setShowForm(false)}
-        onSave={(date, hours, tips, tipOut) => addShift(date, hours, tips, tipOut)}
+        onSave={(date, hours, tips, tipOut, extras) => addShift(date, hours, tips, tipOut, extras)}
+        roles={data.settings.roles}
+        defaultRole={data.settings.lastRole}
+        initialHours={String(data.settings.defaultShiftHours)}
+        initialTipOutMode={data.settings.lastTipOutMode}
+        initialTipOut={data.settings.lastTipOutPercent != null ? String(data.settings.lastTipOutPercent) : ''}
         hourlyWage={data.settings.hourlyWage}
       />
     </View>
