@@ -45,6 +45,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="schedule"
+        options={{
+          title: 'Schedule',
+          tabBarIcon: ({ color }) => (
+            <SymbolView name={{ ios: 'calendar', android: 'calendar_today', web: 'calendar_today' }} tintColor={color} size={24} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="stats"
         options={{
           title: 'Stats',
@@ -62,8 +71,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* Hide legacy tabs from the tab bar */}
-      <Tabs.Screen name="schedule" options={{ href: null }} />
+      {/* Hide tax tab from the tab bar */}
       <Tabs.Screen name="tax" options={{ href: null }} />
     </Tabs>
   );
