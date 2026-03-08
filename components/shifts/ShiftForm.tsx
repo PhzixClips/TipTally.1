@@ -14,7 +14,7 @@ interface Props {
   initialHours?: string;
   initialTips?: string;
   initialTipOut?: string;
-  initialTipOutMode?: 'percent' | 'cash';
+  initialTipOutMode?: 'percent' | 'sales' | 'cash';
   title?: string;
   buttonLabel?: string;
   hourlyWage: number;
@@ -31,8 +31,9 @@ export default function ShiftForm({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [hours, setHours] = useState(initialHours);
   const [tips, setTips] = useState(initialTips);
-  const [tipOutMode, setTipOutMode] = useState<'percent' | 'cash'>(initialTipOutMode);
+  const [tipOutMode, setTipOutMode] = useState<'percent' | 'sales' | 'cash'>(initialTipOutMode);
   const [tipOutValue, setTipOutValue] = useState(initialTipOut);
+  const [totalSales, setTotalSales] = useState('');
   const [error, setError] = useState('');
 
   const wageAmount = hours ? +hours * hourlyWage : 0;
@@ -40,7 +41,9 @@ export default function ShiftForm({
   const tipOutAmount = tipOutValue
     ? tipOutMode === 'percent'
       ? +(tipsNum * (+tipOutValue / 100)).toFixed(2)
-      : +tipOutValue
+      : tipOutMode === 'sales'
+        ? +(totalSales ? +totalSales * (+tipOutValue / 100) : 0).toFixed(2)
+        : +tipOutValue
     : 0;
   const netTips = Math.max(0, tipsNum - tipOutAmount);
   const totalTakeHome = wageAmount + netTips;
@@ -63,6 +66,7 @@ export default function ShiftForm({
     setHours('');
     setTips('');
     setTipOutValue('');
+    setTotalSales('');
     onClose();
   };
 
@@ -120,23 +124,38 @@ export default function ShiftForm({
             <View style={styles.tipOutToggle}>
               <TouchableOpacity
                 style={[styles.toggleBtn, tipOutMode === 'percent' && styles.toggleBtnActive]}
-                onPress={() => { setTipOutMode('percent'); setTipOutValue(''); }}
+                onPress={() => { setTipOutMode('percent'); setTipOutValue(''); setTotalSales(''); }}
               >
-                <Text style={[styles.toggleText, tipOutMode === 'percent' && styles.toggleTextActive]}>%</Text>
+                <Text style={[styles.toggleText, tipOutMode === 'percent' && styles.toggleTextActive]}>% Tips</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleBtn, tipOutMode === 'sales' && styles.toggleBtnActive]}
+                onPress={() => { setTipOutMode('sales'); setTipOutValue(''); }}
+              >
+                <Text style={[styles.toggleText, tipOutMode === 'sales' && styles.toggleTextActive]}>% Sales</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.toggleBtn, tipOutMode === 'cash' && styles.toggleBtnActive]}
-                onPress={() => { setTipOutMode('cash'); setTipOutValue(''); }}
+                onPress={() => { setTipOutMode('cash'); setTipOutValue(''); setTotalSales(''); }}
               >
                 <Text style={[styles.toggleText, tipOutMode === 'cash' && styles.toggleTextActive]}>$</Text>
               </TouchableOpacity>
             </View>
           </View>
+          {tipOutMode === 'sales' && (
+            <Input
+              label="Total Sales ($)"
+              value={totalSales}
+              onChangeText={setTotalSales}
+              placeholder="1500.00"
+              keyboardType="decimal-pad"
+            />
+          )}
           <Input
-            label={tipOutMode === 'percent' ? 'Tip Out (%)' : 'Tip Out ($)'}
+            label={tipOutMode === 'cash' ? 'Tip Out ($)' : 'Tip Out (%)'}
             value={tipOutValue}
             onChangeText={setTipOutValue}
-            placeholder={tipOutMode === 'percent' ? '4.5' : '65.00'}
+            placeholder={tipOutMode === 'cash' ? '65.00' : '4.5'}
             keyboardType="decimal-pad"
           />
 
@@ -154,7 +173,7 @@ export default function ShiftForm({
               {tipOutAmount > 0 && (
                 <View style={styles.breakdownRow}>
                   <Text style={[styles.breakdownLabel, { color: C.coral }]}>
-                    Tip Out {tipOutMode === 'percent' && tipOutValue ? `(${tipOutValue}%)` : ''}
+                    Tip Out {tipOutMode === 'percent' && tipOutValue ? `(${tipOutValue}% tips)` : tipOutMode === 'sales' && tipOutValue ? `(${tipOutValue}% sales)` : ''}
                   </Text>
                   <Text style={[styles.breakdownValue, { color: C.coral }]}>-${tipOutAmount.toFixed(2)}</Text>
                 </View>

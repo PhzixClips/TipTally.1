@@ -23,8 +23,9 @@ export default function EditShiftScreen() {
 
   const [hours, setHours] = useState(String(shift.hours));
   const [tips, setTips] = useState(String(shift.tips));
-  const [tipOutMode, setTipOutMode] = useState<'percent' | 'cash'>('cash');
+  const [tipOutMode, setTipOutMode] = useState<'percent' | 'sales' | 'cash'>('cash');
   const [tipOutValue, setTipOutValue] = useState(String(shift.tipOut ?? 0));
+  const [totalSales, setTotalSales] = useState('');
   const [error, setError] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -33,7 +34,9 @@ export default function EditShiftScreen() {
   const tipOutAmount = tipOutValue
     ? tipOutMode === 'percent'
       ? +(tipsNum * (+tipOutValue / 100)).toFixed(2)
-      : +tipOutValue
+      : tipOutMode === 'sales'
+        ? +(totalSales ? +totalSales * (+tipOutValue / 100) : 0).toFixed(2)
+        : +tipOutValue
     : 0;
   const netTips = Math.max(0, tipsNum - tipOutAmount);
   const totalTakeHome = wageAmount + netTips;
@@ -85,23 +88,38 @@ export default function EditShiftScreen() {
         <View style={styles.tipOutToggle}>
           <TouchableOpacity
             style={[styles.toggleBtn, tipOutMode === 'percent' && styles.toggleBtnActive]}
-            onPress={() => { setTipOutMode('percent'); setTipOutValue(''); }}
+            onPress={() => { setTipOutMode('percent'); setTipOutValue(''); setTotalSales(''); }}
           >
-            <Text style={[styles.toggleText, tipOutMode === 'percent' && styles.toggleTextActive]}>%</Text>
+            <Text style={[styles.toggleText, tipOutMode === 'percent' && styles.toggleTextActive]}>% Tips</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, tipOutMode === 'sales' && styles.toggleBtnActive]}
+            onPress={() => { setTipOutMode('sales'); setTipOutValue(''); }}
+          >
+            <Text style={[styles.toggleText, tipOutMode === 'sales' && styles.toggleTextActive]}>% Sales</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.toggleBtn, tipOutMode === 'cash' && styles.toggleBtnActive]}
-            onPress={() => { setTipOutMode('cash'); setTipOutValue(String(shift.tipOut ?? 0)); }}
+            onPress={() => { setTipOutMode('cash'); setTipOutValue(String(shift.tipOut ?? 0)); setTotalSales(''); }}
           >
             <Text style={[styles.toggleText, tipOutMode === 'cash' && styles.toggleTextActive]}>$</Text>
           </TouchableOpacity>
         </View>
       </View>
+      {tipOutMode === 'sales' && (
+        <Input
+          label="Total Sales ($)"
+          value={totalSales}
+          onChangeText={setTotalSales}
+          placeholder="1500.00"
+          keyboardType="decimal-pad"
+        />
+      )}
       <Input
-        label={tipOutMode === 'percent' ? 'Tip Out (%)' : 'Tip Out ($)'}
+        label={tipOutMode === 'cash' ? 'Tip Out ($)' : 'Tip Out (%)'}
         value={tipOutValue}
         onChangeText={setTipOutValue}
-        placeholder={tipOutMode === 'percent' ? '4.5' : '65.00'}
+        placeholder={tipOutMode === 'cash' ? '65.00' : '4.5'}
         keyboardType="decimal-pad"
       />
 
@@ -118,7 +136,7 @@ export default function EditShiftScreen() {
           {tipOutAmount > 0 && (
             <View style={styles.breakdownRow}>
               <Text style={[styles.bLabel, { color: C.coral }]}>
-                Tip Out {tipOutMode === 'percent' && tipOutValue ? `(${tipOutValue}%)` : ''}
+                Tip Out {tipOutMode === 'percent' && tipOutValue ? `(${tipOutValue}% tips)` : tipOutMode === 'sales' && tipOutValue ? `(${tipOutValue}% sales)` : ''}
               </Text>
               <Text style={[styles.bValue, { color: C.coral }]}>-${tipOutAmount.toFixed(2)}</Text>
             </View>
