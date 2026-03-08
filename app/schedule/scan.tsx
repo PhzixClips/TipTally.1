@@ -90,6 +90,7 @@ export default function ScanScheduleScreen() {
         }
       }
       if (allShifts.length === 0) throw new Error('NO_SHIFTS_FOUND');
+      allShifts.sort((a, b) => a.date.localeCompare(b.date));
       setParsedShifts(allShifts);
       setSelected(new Set(allShifts.map((_, i) => i)));
       setStage('review');

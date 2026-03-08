@@ -34,8 +34,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const save = useCallback(async (newData: AppData) => {
-    setData(newData);
-    await Storage.set(newData);
+    const sorted = {
+      ...newData,
+      shifts: [...newData.shifts].sort((a, b) => a.date.localeCompare(b.date)),
+      schedule: [...newData.schedule].sort((a, b) => a.date.localeCompare(b.date)),
+    };
+    setData(sorted);
+    await Storage.set(sorted);
   }, []);
 
   const addShift = useCallback((date: string, hours: number, totalEarned: number) => {
