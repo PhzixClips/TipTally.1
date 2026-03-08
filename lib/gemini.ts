@@ -1,7 +1,7 @@
 import { ParsedShift } from './types';
 
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent';
 
 /**
  * Send a schedule photo to Gemini and get back parsed shifts.

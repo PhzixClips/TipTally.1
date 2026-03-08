@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Platform,
-  ActivityIndicator, Image, TouchableOpacity, Alert,
+  ActivityIndicator, Image, TouchableOpacity,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -25,18 +25,14 @@ export default function ScanScheduleScreen() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pickError, setPickError] = useState('');
 
   const pickImage = async (useCamera: boolean) => {
+    setPickError('');
+
     // Check API key first
     if (!settings.geminiApiKey) {
-      Alert.alert(
-        'API Key Required',
-        'Set up your Gemini API key in Settings to use the scanner.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Go to Settings', onPress: () => router.replace('/(tabs)/settings') },
-        ],
-      );
+      setPickError('API key required. Add your Gemini API key in Settings.');
       return;
     }
 
@@ -44,13 +40,13 @@ export default function ScanScheduleScreen() {
     if (useCamera) {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission Required', 'Camera access is needed to scan your schedule.');
+        setPickError('Camera permission is required to scan your schedule.');
         return;
       }
     } else {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission Required', 'Photo library access is needed to scan your schedule.');
+        setPickError('Photo library permission is required to scan your schedule.');
         return;
       }
     }
@@ -136,6 +132,16 @@ export default function ScanScheduleScreen() {
           <Text style={styles.pickSub}>
             Take a photo of your posted schedule or pick a screenshot
           </Text>
+          {pickError ? (
+            <View style={styles.pickErrorBox}>
+              <Text style={styles.pickErrorText}>{pickError}</Text>
+              {!settings.geminiApiKey && (
+                <TouchableOpacity onPress={() => router.replace('/(tabs)/settings')}>
+                  <Text style={styles.pickErrorLink}>Go to Settings</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : null}
           <View style={styles.pickButtons}>
             <TouchableOpacity
               style={styles.pickBtn}
@@ -274,6 +280,32 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 20,
+  },
+  pickErrorBox: {
+    backgroundColor: C.danger + '18',
+    borderWidth: 1,
+    borderColor: C.danger + '40',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    maxWidth: 300,
+  },
+  pickErrorText: {
+    color: C.danger,
+    fontSize: 12,
+    fontFamily: mono,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  pickErrorLink: {
+    color: C.blue,
+    fontSize: 12,
+    fontFamily: mono,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   pickButtons: {
     flexDirection: 'row',
